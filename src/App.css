@@ -1,118 +1,449 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* CORREÇÃO DO VITE: Remove a "caixa invisível" que prende o layout */
+#root {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+}
+
 :root {
-  --primary-color: #6366f1;
-  --primary-hover: #4f46e5;
-  --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --glass-bg: rgba(255, 255, 255, 0.95);
-  --text-main: #1f2937;
-  --text-header: #111827;
+  --neon-cyan: #00f3ff;
+  --bg-dark: #000000;
+  --card-gray: #1f2227;
 }
 
 body {
   margin: 0;
   padding: 0;
-  height: 100vh;
+  min-height: 100vh;
+  background-color: var(--bg-dark);
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* =========================================
+   1. TELA DE LOGIN
+========================================= */
+.login-wrapper {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  background: var(--bg-gradient);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.login-container {
-  background: var(--glass-bg);
-  padding: 2.5rem;
-  border-radius: 1.5rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  justify-content: center;
   width: 100%;
-  max-width: 400px;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+}
+
+.logo-icon-outside {
+  width: 500px;
+  max-width: 90vw;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 25px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 520px;
+  background-color: var(--card-gray);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  padding: 3.5rem 3rem;
   text-align: center;
-  backdrop-filter: blur(10px);
-  animation: fadeIn 0.5s ease-out;
+  color: white;
+  border: 1px solid #30343a;
+  box-sizing: border-box;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.login-container h1 {
-  margin-bottom: 1.5rem;
-  color: var(--text-header);
-  font-size: 1.875rem;
+.login-header h1 {
+  margin: 0;
+  font-size: 2.2rem;
   font-weight: 800;
-  letter-spacing: -0.025em;
+  letter-spacing: 2px;
+}
+
+.login-subtitle {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-top: 5px;
+  margin-bottom: 2rem;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-}
-
-.input-group {
-  text-align: left;
-}
-
-.input-group label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #4b5563;
-  margin-bottom: 0.5rem;
+  gap: 1.5rem;
 }
 
 .input-group input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  padding: 1.2rem;
+  border: 1px solid #4b5563;
+  border-radius: 2rem;
   box-sizing: border-box;
   font-size: 1rem;
-  transition: all 0.2s;
-  background: #f9fafb;
+  background: #111418;
+  color: white;
+  text-align: center;
 }
 
 .input-group input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  background: #fff;
+  border-color: var(--neon-cyan);
 }
 
 .login-button {
-  background: var(--primary-color);
+  background: linear-gradient(90deg, #178396, #22b1c8);
   color: white;
-  padding: 0.75rem;
+  padding: 1.2rem;
   border: none;
-  border-radius: 0.5rem;
-  font-size: 1rem;
+  border-radius: 2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
 }
 
-.login-button:hover {
-  background: var(--primary-hover);
+.login-footer {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 10px;
 }
 
-.login-button:active {
-  transform: scale(0.98);
+.login-footer a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.message {
-  margin-top: 1.5rem;
-  padding: 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
+/* =========================================
+   2. TELA INTERNA DO SISTEMA (DASHBOARD)
+========================================= */
+
+.dashboard-layout {
+  background-color: #000000;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+  padding-bottom: 40px;
+}
+
+/* Barra de Navegação (Navbar) - Tela Inteira */
+.navbar {
+  width: 96%;
+  max-width: none;
+  background-color: #0b1114;
+  border-radius: 40px;
+  margin-top: 20px;
+  padding: 15px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #1a262c;
+  box-sizing: border-box;
+}
+
+.nav-logo {
+  height: 70px;
+  object-fit: contain;
+}
+
+.nav-links {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+/* Botões Estilo Pílula da Imagem 2 */
+.nav-item {
+  background-color: #1f2227;
+  border: 2px solid transparent;
+  outline: none;
+  color: #889296;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding: 10px 22px;
+  border-radius: 30px;
+  transition: all 0.3s;
+}
+
+.nav-item:hover {
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Cores das Bordas por Categoria */
+.nav-item-relogio {
+  border-color: #ff8c00;
+}
+
+.nav-item-historico {
+  border-color: #00ffff;
+}
+
+.nav-item-holerite {
+  border-color: #9400d3;
+}
+
+.nav-item-gestao {
+  border-color: #ff1493;
+}
+
+.nav-item-admin {
+  border-color: #32cd32;
+}
+
+.nav-item.active {
+  background-color: #2a2d34;
+  color: white;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.nav-profile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #d9d9d9;
+  cursor: pointer;
+  border: none;
+}
+
+/* Painel Principal do Relógio */
+.clock-panel {
+  width: 100%;
+  /* Agora controlado pelo container pai */
+  background-color: #071318;
+  border: 1px solid #11222a;
+  border-radius: 20px;
+  margin-top: 40px;
+  display: flex;
+  flex-direction: row;
+  padding: 60px;
+  box-sizing: border-box;
+  min-height: 500px;
+}
+
+/* Lado Esquerdo - Log */
+.time-log-section {
+  flex: 1;
+  border-right: 2px solid #11222a;
+  display: flex;
+  flex-direction: column;
+  padding-right: 40px;
+}
+
+.log-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 2px solid #11222a;
+  font-size: 1.1rem;
+  color: #c0c8cc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.log-row.bottom {
+  margin-top: auto;
+  border-bottom: none;
+}
+
+/* Lado Direito - Relógio */
+.clock-section {
+  flex: 1.5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-left: 40px;
+}
+
+.main-time {
+  font-size: 8rem;
+  font-weight: 400;
+  color: white;
+  margin: 0;
+  line-height: 1;
+  letter-spacing: 2px;
+}
+
+.action-area {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 50px;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+.next-pause {
+  text-align: left;
+}
+
+.next-pause p {
+  margin: 0 0 5px 0;
+  color: #c0c8cc;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.next-pause span {
+  color: white;
+  font-size: 1.2rem;
   font-weight: 500;
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
+}
+
+.action-button {
+  background-color: #0044ff;
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  padding: 0 40px;
+  height: 60px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.action-button:hover {
+  background-color: #0055ff;
+  transform: translateY(-2px);
+}
+
+/* --- Nova Seção Inferior do Painel --- */
+.bottom-section {
+  display: flex;
+  margin-top: 20px;
+  gap: 15px;
+  width: 100%;
+}
+
+.info-box {
+  background-color: #0c1d24;
+  border: 1px solid #11222a;
+  border-radius: 10px;
+  flex: 1;
+  padding: 15px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.info-box span {
+  color: #c0c8cc;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+.info-box h4 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+/* Cor azul para o tempo trabalhado */
+.text-blue {
+  color: #007bff;
+}
+
+/* Cor escura para o tempo de pausas (vazio) */
+.text-dark {
+  color: #1a262c;
+}
+
+/* --- Novos Botões de Ação --- */
+.action-group {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.btn-action {
+  border: none;
+  border-radius: 40px;
+  color: white;
+  font-weight: 300;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 15px 40px;
+  min-width: 140px;
+  transition: opacity 0.2s;
+}
+
+.btn-action:hover {
+  opacity: 0.8;
+}
+
+.btn-saida {
+  background-color: #b30000;
+}
+
+.btn-pausa {
+  background-color: #b38f00;
+}
+
+/* --- ADIÇÕES DE LAYOUT (IMAGEM 66a087) --- */
+
+.clock-panel-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 96%;
+}
+
+/* Borda azul de destaque (Igual ao print) */
+.highlight-blue {
+  border: 1px solid #007bff !important;
+}
+
+/* Tabela interna de Pausas */
+.pausa-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.pausa-grid-header {
+  display: flex;
+  justify-content: space-around;
+  color: #1a262c;
+  /* Cor escura do print */
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.pausa-grid-row {
+  display: flex;
+  justify-content: space-around;
+  color: #1a262c;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+/* Pequeno texto "em" ou "hrs" */
+.label-small {
+  font-size: 0.8rem;
+  color: #c0c8cc;
+  margin-right: 4px;
 }
