@@ -1,239 +1,760 @@
-import { useState, useEffect } from 'react'
-import axios from 'axios'
-import ProductivityChart from './ProductivityChart';
-import './App.css';
+import { useEffect, useMemo, useState, useCallback } from "react";
+import axios from "axios";
+import "./App.css";
+import LogoNexus from "./assets/logo-nexus.svg";
+import Cadastro from "./cadastro";
 
-import LogoNexus from './assets/logo-nexus.svg';
+// ─── Utilitários ─────────────────────────────────────────────────────────────
+
+const API_BASE = "http://127.0.0.1:5000/api";
+
+function fmtTime(date) {
+  if (!date) return "--:--:--";
+  return new Date(date).toLocaleTimeString("pt-BR", { hour12: false });
+}
+
+function fmtSeconds(totalSec) {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+}
+
+function formatCpf(value) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function getAuthHeader() {
+  const token = localStorage.getItem("nexus_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ── Compressor de Imagem (Evita travar a tela com fotos grandes) ─────────────
+function compressImage(file, callback) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const MAX_WIDTH = 250;
+      const MAX_HEIGHT = 250;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Comprime para JPEG com qualidade 70%
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      callback(dataUrl);
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── Mapa de status ───────────────────────────────────────────────────────────
+
+const STATUS_MAP = {
+  idle: { badge: "idle", label: "Não Iniciado", chrono: "", hint: "" },
+  working: { badge: "working", label: "Trabalhando", chrono: "working", hint: "JORNADA EM ANDAMENTO" },
+  paused: { badge: "paused", label: "Em Pausa", chrono: "paused", hint: "RETORNE PARA CONTINUAR" },
+  done: { badge: "done", label: "Encerrado", chrono: "done", hint: "" },
+};
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 
 function App() {
-  // --- ESTADOS DE LOGIN E NAVEGAÇÃO ---
-  const [isLogged, setIsLogged] = useState(false)
-  const [userData, setUserData] = useState({ nome: '', perfil: '' })
-  const [cpf, setCpf] = useState('')
-  const [senha, setSenha] = useState('')
-  const [abaAtiva, setAbaAtiva] = useState('ponto')
-  const [equipe, setEquipe] = useState([])
-  const [pendencias, setPendencias] = useState([])
+  // Telas: intro | login | cadastro | inicio | app
+  const [screen, setScreen] = useState("intro");
 
-  // --- ESTADOS DO CRONÔMETRO ---
-  const [segundos, setSegundos] = useState(0);
-  const [ativo, setAtivo] = useState(false);
-  const [pausado, setPausado] = useState(false);
+  // Auth
+  const [isLogged, setIsLogged] = useState(false);
+  const [userData, setUserData] = useState({ nome: "", perfil: "", foto_perfil: "" });
+  const [cpf, setCpf] = useState("");
+  const [senha, setSenha] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
-  // --- ESTADOS DOS HORÁRIOS E PAUSAS (CORRIGIDO: Adicionado os que faltavam) ---
-  const [horaInicio, setHoraInicio] = useState("--:--");
-  const [horaFim, setHoraFim] = useState("--:--");
-  const [listaPausas, setListaPausas] = useState([]); 
+  // Navegação interna
+  const [abaAtiva, setAbaAtiva] = useState("ponto");
 
-  // Lógica do Cronômetro
+  // Controle de jornada
+  const [status, setStatus] = useState("idle");
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [pauseLog, setPauseLog] = useState([]);
+  const [now, setNow] = useState(Date.now());
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Feedback visual
+  const [toast, setToast] = useState({ msg: "", type: "info" });
+  const [confirmExit, setConfirmExit] = useState(false);
+
+  // Modal do PRÓPRIO Perfil
+  const [showPerfilModal, setShowPerfilModal] = useState(false);
+  const [editNome, setEditNome] = useState("");
+  const [editFoto, setEditFoto] = useState("");
+  const [salvandoPerfil, setSalvandoPerfil] = useState(false);
+
+  // Painel de GESTÃO
+  const [equipe, setEquipe] = useState([]);
+  const [loadingEquipe, setLoadingEquipe] = useState(false);
+  const [gestaoModal, setGestaoModal] = useState({ show: false, colab: null });
+  const [gestaoNome, setGestaoNome] = useState("");
+  const [gestaoFoto, setGestaoFoto] = useState("");
+  const [salvandoGestao, setSalvandoGestao] = useState(false);
+
+  // ── Intro: transição automática ──────────────────────────────────────────
+
   useEffect(() => {
-    let intervalo = null;
-    if (ativo && !pausado) {
-      intervalo = setInterval(() => {
-        setSegundos((s) => s + 1);
-      }, 1000);
-    } else {
-      clearInterval(intervalo);
-    }
-    return () => clearInterval(intervalo);
-  }, [ativo, pausado]);
+    const timerStarted = setTimeout(() => {
+      document.body.classList.add("started");
+    }, 4500);
 
-  const formatarTempo = (total) => {
-    const h = Math.floor(total / 3600).toString().padStart(2, '0');
-    const m = Math.floor((total % 3600) / 60).toString().padStart(2, '0');
-    const s = (total % 60).toString().padStart(2, '0');
-    return `${h}:${m}:${s}`;
-  };
+    const timerRedirect = setTimeout(() => {
+      setScreen("login");
+    }, 6000);
 
-  const registrarNoBanco = async (tipo) => {
-    try {
-      const token = localStorage.getItem('nexus_token');
-      await axios.post('http://127.0.0.1:5000/api/ponto/registrar',
-        { tipo_registro: tipo },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (e) { console.error("Erro no registro:", e); }
-  };
-
-  const handleAcaoPrincipal = async () => {
-    const agora = new Date().toLocaleTimeString('pt-BR');
-
-    if (!ativo) {
-      // INICIAR JORNADA
-      setHoraInicio(agora);
-      setHoraFim("--:--"); // Limpa o fim se estiver reiniciando
-      setListaPausas([]);  // Limpa as pausas do dia anterior
-      await registrarNoBanco('entrada');
-      setAtivo(true);
-      setPausado(false);
-    } else {
-      // ALTERNAR PAUSA
-      if (!pausado) {
-        // Começou uma pausa: cria um novo objeto usando 'inicio' para bater com o JSX
-        setListaPausas([...listaPausas, { inicio: agora, fim: "--:--" }]);
-        await registrarNoBanco('pausa_inicio');
-      } else {
-        // Retomou da pausa: atualiza o 'fim' do último item
-        const novasPausas = [...listaPausas];
-        novasPausas[novasPausas.length - 1].fim = agora;
-        setListaPausas(novasPausas);
-        await registrarNoBanco('pausa_fim');
-      }
-      setPausado(!pausado);
-    }
-  };
-
-  const handleFinalizarDia = async () => {
-    if (window.confirm("Deseja finalizar o expediente?")) {
-      const agora = new Date().toLocaleTimeString('pt-BR');
-      
-      // 1. Regista o horário no campo FIM para o utilizador visualizar
-      setHoraFim(agora); 
-      
-      // 2. Envia a informação para o banco de dados
-      await registrarNoBanco('saida');
-      
-      // 3. Desativa o cronómetro e ZERA O CONTADOR
-      setAtivo(false);
-      setPausado(false);
-      setSegundos(0); // <--- Esta linha faz o relógio voltar a 00:00:00
-    }
-  };
-
-  // --- LOGIN E LOGOUT ---
-  useEffect(() => {
-    const token = localStorage.getItem('nexus_token');
-    const nome = localStorage.getItem('nexus_nome');
-    const perfil = localStorage.getItem('nexus_perfil');
-    if (token && nome && perfil) {
-      setUserData({ nome, perfil });
-      setIsLogged(true);
-    }
+    return () => {
+      clearTimeout(timerStarted);
+      clearTimeout(timerRedirect);
+      document.body.classList.remove("started");
+    };
   }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
+  // ── Cronômetro ───────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (status !== "working" && status !== "paused") return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  // ── Carregar Equipe (Gestor) ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (abaAtiva === "gestao" && userData.perfil !== "colaborador") {
+      carregarEquipe();
+    }
+  }, [abaAtiva, userData.perfil]);
+
+  async function carregarEquipe() {
+    setLoadingEquipe(true);
     try {
-      const response = await axios.post('http://127.0.0.1:5000/api/auth/login', { cpf, senha })
-      localStorage.setItem('nexus_token', response.data.token)
-      localStorage.setItem('nexus_nome', response.data.nome)
-      localStorage.setItem('nexus_perfil', response.data.perfil)
-      setUserData({ nome: response.data.nome, perfil: response.data.perfil })
-      setIsLogged(true)
-    } catch (error) { alert("Dados inválidos"); }
+      const { data } = await axios.get(`${API_BASE}/gestor/equipe`, { headers: getAuthHeader() });
+      setEquipe(data.equipe || []);
+    } catch (e) {
+      showToast("Erro ao carregar equipe.", "error");
+    }
+    setLoadingEquipe(false);
   }
 
-  const handleLogout = () => {
+  // ── Toast com tipo ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!toast.msg) return;
+    const timer = setTimeout(() => setToast({ msg: "", type: "info" }), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = useCallback((msg, type = "info") => {
+    setToast({ msg, type });
+  }, []);
+
+  // ── Cálculos de tempo ────────────────────────────────────────────────────
+
+  const totalPauseSec = useMemo(() => {
+    return pauseLog.reduce((acc, p) => {
+      const end = p.out ?? now;
+      return acc + Math.floor((end - p.in) / 1000);
+    }, 0);
+  }, [pauseLog, now]);
+
+  const connectedSec = startTime ? Math.floor((now - startTime) / 1000) : 0;
+  const workedSec = Math.max(0, connectedSec - totalPauseSec);
+
+  // ── Integração com backend ───────────────────────────────────────────────
+
+  async function registrarNoBanco(tipo) {
+    try {
+      await axios.post(
+        `${API_BASE}/ponto/registrar`,
+        { tipo_registro: tipo },
+        { headers: getAuthHeader() }
+      );
+    } catch (e) {
+      console.error("Erro no registro de ponto:", e);
+      showToast("Erro ao registrar no banco. Verifique a conexão.", "error");
+    }
+  }
+
+  // ── Login ────────────────────────────────────────────────────────────────
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoginError("");
+    setLoginLoading(true);
+
+    try {
+      const { data } = await axios.post(`${API_BASE}/auth/login`, {
+        cpf: cpf.replace(/\D/g, ""),
+        senha,
+      });
+
+      localStorage.setItem("nexus_token", data.token);
+      localStorage.setItem("nexus_nome", data.nome);
+      localStorage.setItem("nexus_perfil", data.perfil);
+
+      setUserData({ nome: data.nome, perfil: data.perfil, foto_perfil: data.foto_perfil });
+      setIsLogged(true);
+      setScreen("inicio");
+    } catch (error) {
+      const msg =
+        error?.response?.data?.erro ||
+        (error?.response?.status === 401
+          ? "CPF ou senha incorretos."
+          : "Falha na conexão. Tente novamente.");
+      setLoginError(msg);
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  // ── Logout ───────────────────────────────────────────────────────────────
+
+  function handleLogout() {
     localStorage.clear();
     setIsLogged(false);
-  };
+    setUserData({ nome: "", perfil: "", foto_perfil: "" });
+    setCpf("");
+    setSenha("");
+    setLoginError("");
+    setAbaAtiva("ponto");
+    setStatus("idle");
+    setStartTime(null);
+    setEndTime(null);
+    setPauseLog([]);
+    setNow(Date.now());
+    setShowPerfilModal(false);
+    setScreen("login");
+  }
 
-  if (!isLogged) {
+  // ── Edição de Perfil Próprio ─────────────────────────────────────────────
+
+  async function salvarPerfil() {
+    setSalvandoPerfil(true);
+    try {
+      const { data } = await axios.put(`${API_BASE}/auth/perfil`, {
+        nome: editNome,
+        foto_perfil: editFoto
+      }, { headers: getAuthHeader() });
+
+      setUserData({ ...userData, nome: data.nome, foto_perfil: data.foto_perfil });
+      localStorage.setItem("nexus_nome", data.nome);
+      setShowPerfilModal(false);
+      showToast("Perfil atualizado!", "success");
+    } catch (error) {
+      showToast("Erro ao atualizar perfil", "error");
+    } finally {
+      setSalvandoPerfil(false);
+    }
+  }
+
+  // ── Edição de Colaborador (Gestor) ───────────────────────────────────────
+
+  async function salvarEdicaoGestor() {
+    setSalvandoGestao(true);
+    try {
+      await axios.put(`${API_BASE}/gestor/colaborador/${gestaoModal.colab.id}/perfil`, {
+        nome: gestaoNome,
+        foto_perfil: gestaoFoto
+      }, { headers: getAuthHeader() });
+
+      showToast("Colaborador atualizado!", "success");
+      setGestaoModal({ show: false, colab: null });
+      carregarEquipe(); // Recarrega a tabela para mostrar as mudanças
+    } catch (error) {
+      showToast("Erro ao atualizar colaborador", "error");
+    } finally {
+      setSalvandoGestao(false);
+    }
+  }
+
+  // ── Ações de jornada ─────────────────────────────────────────────────────
+
+  async function handleStart() {
+    if (status !== "idle") {
+      showToast("Jornada já iniciada!", "error");
+      return;
+    }
+    const current = Date.now();
+    setStartTime(current);
+    setEndTime(null);
+    setPauseLog([]);
+    setNow(current);
+    setStatus("working");
+    setActionLoading(true);
+    await registrarNoBanco("entrada");
+    setActionLoading(false);
+    showToast(`Jornada iniciada — ${fmtTime(current)}`, "success");
+  }
+
+  async function handlePause() {
+    if (status === "idle" || status === "done") {
+      showToast("Ação não permitida neste estado.", "error");
+      return;
+    }
+    const current = Date.now();
+    setActionLoading(true);
+
+    if (status === "working") {
+      setPauseLog((prev) => [...prev, { in: current, out: null }]);
+      setStatus("paused");
+      await registrarNoBanco("pausa_inicio");
+      showToast(`Pausa iniciada — ${fmtTime(current)}`, "info");
+    } else {
+      setPauseLog((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last && !last.out) last.out = current;
+        return updated;
+      });
+      setStatus("working");
+      await registrarNoBanco("pausa_fim");
+      showToast(`Retomado — ${fmtTime(current)}`, "success");
+    }
+
+    setNow(current);
+    setActionLoading(false);
+  }
+
+  async function handleExit() {
+    if (status === "idle" || status === "done") {
+      showToast("Nenhuma jornada ativa.", "error");
+      return;
+    }
+    setConfirmExit(true);
+  }
+
+  async function confirmHandleExit() {
+    setConfirmExit(false);
+    const current = Date.now();
+    setActionLoading(true);
+
+    if (status === "paused") {
+      setPauseLog((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last && !last.out) last.out = current;
+        return updated;
+      });
+    }
+
+    setEndTime(current);
+    setNow(current);
+    setStatus("done");
+    await registrarNoBanco("saida");
+    setActionLoading(false);
+    showToast(`Jornada encerrada — ${fmtTime(current)}`, "success");
+  }
+
+  // ── Derivados ────────────────────────────────────────────────────────────
+
+  const currentStatus = STATUS_MAP[status];
+  const isManager = userData.perfil && userData.perfil !== "colaborador";
+
+  const userInitials = userData.nome
+    ? userData.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
+    : "?";
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if (screen === "intro") {
+    return (
+      <>
+        <div className="bg-pulse" aria-hidden="true" />
+        <div className="bg-vignette" aria-hidden="true" />
+        <div className="scanlines" aria-hidden="true" />
+        <main className="intro" aria-label="Carregando Nexus">
+          <div className="flash" aria-hidden="true" />
+          <div className="logo-wrap">
+            <div className="glow-ring" aria-hidden="true" />
+            <img src={LogoNexus} alt="Logo Nexus" className="logo" />
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  if (screen === "cadastro") {
+    return <Cadastro onGoLogin={() => setScreen("login")} />;
+  }
+
+  if (screen === "login") {
     return (
       <div className="login-wrapper">
-        <img src={LogoNexus} alt="Logo" className="logo-icon-outside" />
+        <img src={LogoNexus} alt="Logo Nexus" className="logo-icon-outside" />
+
         <div className="login-card">
           <h1>LOGIN</h1>
           <p className="login-subtitle">Acesse o portal da equipe</p>
-          <form onSubmit={handleLogin} className="login-form">
-            <div className="input-group"><input type="text" placeholder="CPF" value={cpf} onChange={(e) => setCpf(e.target.value)} required /></div>
-            <div className="input-group"><input type="password" placeholder="SENHA" value={senha} onChange={(e) => setSenha(e.target.value)} required /></div>
-            <button type="submit" className="login-button">ENTRAR</button>
+
+          <form onSubmit={handleLogin} className="login-form" noValidate>
+            <div className="input-group">
+              <input type="text" placeholder="CPF" value={cpf} onChange={(e) => setCpf(formatCpf(e.target.value))} inputMode="numeric" autoComplete="username" required aria-label="CPF" />
+            </div>
+            <div className="input-group">
+              <input type="password" placeholder="SENHA" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="current-password" required aria-label="Senha" />
+            </div>
+
+            {loginError && <div className="login-error" role="alert">{loginError}</div>}
+
+            <button type="submit" className="login-button" disabled={loginLoading}>
+              {loginLoading ? <span className="btn-loading"><span className="spinner" /> ENTRANDO…</span> : "ENTRAR"}
+            </button>
           </form>
-          <div className="login-footer"><a>CRIAR CONTA</a><a>ESQUECI A SENHA</a></div>
+
+          <div className="login-footer">
+            <a href="#" onClick={(e) => { e.preventDefault(); setScreen("cadastro"); }}>CRIAR CONTA</a>
+            <a href="#" onClick={(e) => e.preventDefault()}>ESQUECI A SENHA</a>
+          </div>
         </div>
       </div>
-    )
+    );
   }
 
-  return (
-    <div className="dashboard-layout">
-      <nav className="navbar">
-        <img src={LogoNexus} alt="Nexus" className="nav-logo" />
-        <div className="nav-links">
-          <button className={`nav-item nav-item-relogio ${abaAtiva === 'ponto' ? 'active' : ''}`} onClick={() => setAbaAtiva('ponto')}>MEU RELÓGIO</button>
-          <button className="nav-item nav-item-historico">HISTORICO</button>
-          <button className="nav-item nav-item-holerite">HOLERITE</button>
-          <button className="nav-item nav-item-admin">MINHA EQUIPE</button>
-          <button className="nav-item nav-item-relogio">RANKING</button>
-          {userData.perfil !== 'colaborador' && <button className={`nav-item nav-item-gestao ${abaAtiva === 'gestao' ? 'active' : ''}`} onClick={() => setAbaAtiva('gestao')}>GESTÃO</button>}
-        </div>
-        <button className="nav-profile" onClick={handleLogout}></button>
+  // ── Topbar ───────────────────────────────────────────────────────────────
+
+  const Topbar = () => (
+    <header className="topbar">
+      <div className="topbar__logo">
+        <img src={LogoNexus} alt="Logo Nexus" />
+      </div>
+
+      <nav className="topbar__nav" aria-label="Menu principal">
+        <button
+          className={abaAtiva === "ponto" && screen === "app" ? "active" : ""}
+          onClick={() => { setAbaAtiva("ponto"); if (screen !== "app") setScreen("app"); }}
+        >
+          MEU RELÓGIO
+        </button>
+        <button disabled title="Em breve">HISTÓRICO</button>
+        <button disabled title="Em breve">HOLERITE</button>
+        <button disabled title="Em breve">MINHA EQUIPE</button>
+        <button disabled title="Em breve">RANKING</button>
+        {isManager && (
+          <button
+            className={abaAtiva === "gestao" ? "active" : ""}
+            onClick={() => { setAbaAtiva("gestao"); if (screen !== "app") setScreen("app"); }}
+          >
+            GESTÃO
+          </button>
+        )}
       </nav>
 
-      <div className="clock-panel-container">
-        {abaAtiva === 'ponto' ? (
-          <>
-            <div className="clock-panel">
-              <div className="time-log-section highlight-blue">
-                <div className="log-row">
-                  <span>INICIO</span>
-                  <span>{horaInicio}</span>
-                </div>
-
-                <div className="pausa-table">
-                  <span className="log-label" style={{ marginBottom: '10px', display: 'block' }}>PAUSA</span>
-                  <div className="pausa-grid-header">
-                    <span>ENTRADA</span>
-                    <span>RETOMADA</span>
-                  </div>
-
-                  <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                    {listaPausas.length === 0 ? (
-                      <div className="pausa-grid-row"><span>--:--</span><span>--:--</span></div>
-                    ) : (
-                      listaPausas.map((pausa, index) => (
-                        <div className="pausa-grid-row" key={index}>
-                          <span>{pausa.inicio}</span>
-                          <span>{pausa.fim}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="log-row bottom">
-                  <span>FIM</span>
-                  <span>{horaFim}</span>
-                </div>
-              </div>
-
-              <div className="clock-section">
-                <span style={{ color: '#c0c8cc', letterSpacing: '2px' }}>TEMPO CONECTADO</span>
-                <h1 className="main-time">{formatarTempo(segundos)}</h1>
-                <div className="action-area" style={{ justifyContent: 'center' }}>
-                  <div className="next-pause" style={{ textAlign: 'center' }}>
-                    <p>PROXIMA PAUSA</p>
-                    <span>em 02:30 HRS</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bottom-section">
-              <div className="info-box"><span>TEMPO TRABALHADO</span><h4 className="text-blue">{formatarTempo(segundos)}</h4></div>
-              <div className="info-box"><span>TEMPO PAUSAS</span><h4 className="text-dark">00:00:00</h4></div>
-              <div className="action-group">
-                <button className="btn-action btn-saida" onClick={handleFinalizarDia}>SAÍDA</button>
-                <button
-                  className="btn-action btn-pausa"
-                  onClick={handleAcaoPrincipal}
-                  style={{
-                    backgroundColor: !ativo ? '#b38f00' : (pausado ? '#32cd32' : '#b38f00'),
-                    minWidth: '180px'
-                  }}
-                >
-                  {!ativo ? "INICIAR TRABALHO" : (pausado ? "RETOMAR" : "PAUSA")}
-                </button>
-              </div>
-            </div>
-          </>
+      <div
+        className="topbar__user"
+        onClick={() => {
+          setEditNome(userData.nome);
+          setEditFoto(userData.foto_perfil || "");
+          setShowPerfilModal(true);
+        }}
+        title="Editar Perfil"
+        role="button"
+        tabIndex={0}
+      >
+        {userData.foto_perfil ? (
+          <img src={userData.foto_perfil} alt="Perfil" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
         ) : (
-          <div className="clock-panel" style={{ color: 'white' }}><h2>Painel de Gestão</h2></div>
+          <span className="topbar__user-initials">{userInitials}</span>
         )}
       </div>
+    </header>
+  );
+
+  // ── Tela de Início (Hero) ────────────────────────────────────────────────
+
+  if (screen === "inicio" && isLogged) {
+    return (
+      <div className="wrapper">
+        <Topbar />
+        <main className="hero">
+          {userData.nome && (
+            <p className="hero-greeting">
+              Olá, <strong>{userData.nome.split(" ")[0]}</strong>
+            </p>
+          )}
+          <section className="hero-card">
+            <img src={LogoNexus} alt="Nexus" className="hero-card__logo" />
+            <button className="hero-card__button" onClick={() => setScreen("app")}>
+              INICIAR JORNADA
+            </button>
+          </section>
+        </main>
+        {showPerfilModal && <PerfilModal />}
+      </div>
+    );
+  }
+
+  // ── Modais Auxiliares ────────────────────────────────────────────────────
+
+  const PerfilModal = () => (
+    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+      <div className="modal-card">
+        <h3 className="modal-title">Meu Perfil</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '24px' }}>
+          <div style={{ textAlign: 'center' }}>
+            {editFoto ? (
+              <img src={editFoto} alt="Preview" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e2d42', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📷</div>
+            )}
+          </div>
+          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            Foto de Perfil:
+            <input type="file" accept="image/*" onChange={(e) => compressImage(e.target.files[0], setEditFoto)} style={{ color: 'white' }} />
+          </label>
+          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            Nome:
+            <input type="text" value={editNome} onChange={(e) => setEditNome(e.target.value)} placeholder="Seu Nome" style={{ width: '100%', padding: '10px', background: '#111418', color: 'white', border: '1px solid #4b5563', borderRadius: '8px', fontFamily: 'var(--sans)' }} />
+          </label>
+        </div>
+        <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+          <button className="btn btn-exit" onClick={handleLogout}>Sair da Conta</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-cancel" onClick={() => setShowPerfilModal(false)}>Cancelar</button>
+            <button className="btn btn-start" onClick={salvarPerfil} disabled={salvandoPerfil}>
+              {salvandoPerfil ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
-  )
+  );
+
+  const ModalEdicaoGestor = () => (
+    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+      <div className="modal-card">
+        <h3 className="modal-title">Editar Colaborador</h3>
+        <p className="modal-body" style={{ marginTop: '-10px' }}>{gestaoModal.colab.cpf}</p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '24px' }}>
+          <div style={{ textAlign: 'center' }}>
+            {gestaoFoto ? (
+              <img src={gestaoFoto} alt="Preview" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e2d42', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>👤</div>
+            )}
+          </div>
+          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            Nova Foto:
+            <input type="file" accept="image/*" onChange={(e) => compressImage(e.target.files[0], setGestaoFoto)} style={{ color: 'white' }} />
+          </label>
+          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            Nome do Colaborador:
+            <input type="text" value={gestaoNome} onChange={(e) => setGestaoNome(e.target.value)} style={{ width: '100%', padding: '10px', background: '#111418', color: 'white', border: '1px solid #4b5563', borderRadius: '8px', fontFamily: 'var(--sans)' }} />
+          </label>
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-cancel" onClick={() => setGestaoModal({ show: false, colab: null })}>Cancelar</button>
+          <button className="btn btn-start" onClick={salvarEdicaoGestor} disabled={salvandoGestao}>
+            {salvandoGestao ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── App Principal ────────────────────────────────────────────────────────
+
+  return (
+    <div className="wrapper">
+      <Topbar />
+
+      <main>
+        {abaAtiva === "ponto" ? (
+          <div className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Controle de Jornada</span>
+              <div className={`badge badge--${currentStatus.badge}`}>
+                <span className="badge-dot" aria-hidden="true" />
+                <span>{currentStatus.label}</span>
+              </div>
+            </div>
+
+            <div className="grid">
+              <div className="info-col">
+                <div className="info-block">
+                  <div className="info-label">Início</div>
+                  <div className={`info-value ${!startTime ? "dim" : ""}`}>{fmtTime(startTime)}</div>
+                </div>
+
+                <div className="info-block">
+                  <div className="info-label">
+                    Pausas {pauseLog.length > 0 && <span className="pause-count"> ({pauseLog.length})</span>}
+                  </div>
+                  {pauseLog.length === 0 ? (
+                    <span className="pause-empty">— sem pausas —</span>
+                  ) : (
+                    <table className="pause-table">
+                      <thead><tr><th>#</th><th>Início</th><th>Fim</th></tr></thead>
+                      <tbody>
+                        {pauseLog.map((p, i) => (
+                          <tr key={i}>
+                            <td>{i + 1}</td>
+                            <td>{fmtTime(p.in)}</td>
+                            <td className={!p.out ? "open" : ""}>{p.out ? fmtTime(p.out) : "em curso…"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                <div className="info-block">
+                  <div className="info-label">Fim</div>
+                  <div className={`info-value ${!endTime ? "dim" : ""}`}>{fmtTime(endTime)}</div>
+                </div>
+              </div>
+
+              <div className="chrono-area">
+                <div className="chrono-label">Tempo Conectado</div>
+                <div className={`chrono-display chrono-display--${currentStatus.chrono}`} aria-live="off">
+                  {fmtSeconds(connectedSec)}
+                </div>
+                <div className="next-pause-hint" aria-live="polite">{currentStatus.hint}</div>
+              </div>
+
+              <div className="stats-area">
+                <div className="stat-block">
+                  <div className="info-label">Tempo Trabalhado</div>
+                  <div className="stat-value stat-value--worked">{fmtSeconds(workedSec)}</div>
+                </div>
+                <div className="stat-block">
+                  <div className="info-label">Tempo em Pausas</div>
+                  <div className="stat-value stat-value--paused">{fmtSeconds(totalPauseSec)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="actions">
+              <button className="btn btn-start" onClick={handleStart} disabled={status !== "idle" || actionLoading}>
+                {actionLoading && status === "idle" ? <span className="spinner spinner--dark" /> : null} Iniciar
+              </button>
+              <button className="btn btn-pause" onClick={handlePause} disabled={status === "idle" || status === "done" || actionLoading}>
+                {status === "paused" ? "Retomar" : "Pausar"}
+              </button>
+              <button className="btn btn-exit" onClick={handleExit} disabled={status === "idle" || status === "done" || actionLoading}>
+                Saída
+              </button>
+            </div>
+          </div>
+        ) : (
+
+          /* PAINEL DE GESTÃO */
+          <div className="panel panel--gestao" style={{ padding: '32px', maxWidth: '860px', width: '100%', color: 'white' }}>
+            <h2 style={{ fontFamily: 'var(--display)', fontSize: '1.4rem', letterSpacing: '1px' }}>Painel de Gestão</h2>
+            <p style={{ opacity: 0.7, fontSize: '0.9rem', marginTop: '8px', marginBottom: '24px' }}>Gerencie sua equipe e atualize informações.</p>
+
+            {loadingEquipe ? (
+              <p style={{ color: 'var(--accent-cyan)', fontFamily: 'var(--mono)' }}>Carregando dados da equipe...</p>
+            ) : equipe.length === 0 ? (
+              <p style={{ opacity: 0.5 }}>Nenhum colaborador encontrado na sua equipe.</p>
+            ) : (
+              <div style={{ background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <table className="pause-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                  <thead style={{ background: 'var(--bg-card2)' }}>
+                    <tr>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>FOTO</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>NOME</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>CPF</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>AÇÕES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {equipe.map((colab) => (
+                      <tr key={colab.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          {colab.foto_perfil ? (
+                            <img src={colab.foto_perfil} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #1e2d42, #111927)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>👤</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-hi)', fontFamily: 'var(--sans)', fontSize: '14px' }}>
+                          {colab.nome} {colab.perfil === "gestor" && <span style={{ fontSize: '10px', background: 'var(--accent-cyan)', color: 'black', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', fontWeight: 'bold' }}>GESTOR</span>}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-mid)', fontFamily: 'var(--mono)', fontSize: '13px' }}>
+                          {formatCpf(colab.cpf)}
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <button
+                            className="btn btn-cancel"
+                            style={{ padding: '6px 14px', fontSize: '11px', letterSpacing: '1px' }}
+                            onClick={() => {
+                              setGestaoNome(colab.nome);
+                              setGestaoFoto(colab.foto_perfil || "");
+                              setGestaoModal({ show: true, colab });
+                            }}
+                          >
+                            EDITAR
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      <div className={`toast toast--${toast.type} ${toast.msg ? "show" : ""}`} role="status">
+        {toast.msg}
+      </div>
+
+      {confirmExit && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <h3 className="modal-title">Encerrar Jornada?</h3>
+            <p className="modal-body">Tem certeza que deseja registrar sua saída?</p>
+            <div className="modal-actions">
+              <button className="btn btn-cancel" onClick={() => setConfirmExit(false)}>Cancelar</button>
+              <button className="btn btn-exit" onClick={confirmHandleExit}>Confirmar Saída</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPerfilModal && <PerfilModal />}
+      {gestaoModal.show && <ModalEdicaoGestor />}
+
+    </div>
+  );
 }
 
-export default App
+export default App;
