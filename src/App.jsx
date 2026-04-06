@@ -33,6 +33,7 @@ function getAuthHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+<<<<<<< HEAD
 // ── Compressor de Imagem (Evita travar a tela com fotos grandes) ─────────────
 function compressImage(file, callback) {
   if (!file) return;
@@ -79,6 +80,15 @@ const STATUS_MAP = {
   working: { badge: "working", label: "Trabalhando", chrono: "working", hint: "JORNADA EM ANDAMENTO" },
   paused: { badge: "paused", label: "Em Pausa", chrono: "paused", hint: "RETORNE PARA CONTINUAR" },
   done: { badge: "done", label: "Encerrado", chrono: "done", hint: "" },
+=======
+// ─── Mapa de status ───────────────────────────────────────────────────────────
+
+const STATUS_MAP = {
+  idle:    { badge: "idle",    label: "Não Iniciado", chrono: "",        hint: "" },
+  working: { badge: "working", label: "Trabalhando",  chrono: "working", hint: "JORNADA EM ANDAMENTO" },
+  paused:  { badge: "paused",  label: "Em Pausa",     chrono: "paused",  hint: "RETORNE PARA CONTINUAR" },
+  done:    { badge: "done",    label: "Encerrado",    chrono: "done",    hint: "" },
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -89,7 +99,11 @@ function App() {
 
   // Auth
   const [isLogged, setIsLogged] = useState(false);
+<<<<<<< HEAD
   const [userData, setUserData] = useState({ nome: "", perfil: "", foto_perfil: "" });
+=======
+  const [userData, setUserData] = useState({ nome: "", perfil: "" });
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   const [cpf, setCpf] = useState("");
   const [senha, setSenha] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -110,6 +124,7 @@ function App() {
   const [toast, setToast] = useState({ msg: "", type: "info" });
   const [confirmExit, setConfirmExit] = useState(false);
 
+<<<<<<< HEAD
   // Modal do PRÓPRIO Perfil
   const [showPerfilModal, setShowPerfilModal] = useState(false);
   const [editNome, setEditNome] = useState("");
@@ -124,6 +139,8 @@ function App() {
   const [gestaoFoto, setGestaoFoto] = useState("");
   const [salvandoGestao, setSalvandoGestao] = useState(false);
 
+=======
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   // ── Intro: transição automática ──────────────────────────────────────────
 
   useEffect(() => {
@@ -150,6 +167,7 @@ function App() {
     return () => clearInterval(interval);
   }, [status]);
 
+<<<<<<< HEAD
   // ── Carregar Equipe (Gestor) ─────────────────────────────────────────────
 
   useEffect(() => {
@@ -170,6 +188,9 @@ function App() {
   }
 
   // ── Toast com tipo ───────────────────────────────────────────────────────
+=======
+  // ── Toast com tipo (info | error | success) ──────────────────────────────
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   useEffect(() => {
     if (!toast.msg) return;
@@ -225,7 +246,11 @@ function App() {
       localStorage.setItem("nexus_nome", data.nome);
       localStorage.setItem("nexus_perfil", data.perfil);
 
+<<<<<<< HEAD
       setUserData({ nome: data.nome, perfil: data.perfil, foto_perfil: data.foto_perfil });
+=======
+      setUserData({ nome: data.nome, perfil: data.perfil });
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
       setIsLogged(true);
       setScreen("inicio");
     } catch (error) {
@@ -245,7 +270,11 @@ function App() {
   function handleLogout() {
     localStorage.clear();
     setIsLogged(false);
+<<<<<<< HEAD
     setUserData({ nome: "", perfil: "", foto_perfil: "" });
+=======
+    setUserData({ nome: "", perfil: "" });
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
     setCpf("");
     setSenha("");
     setLoginError("");
@@ -255,6 +284,7 @@ function App() {
     setEndTime(null);
     setPauseLog([]);
     setNow(Date.now());
+<<<<<<< HEAD
     setShowPerfilModal(false);
     setScreen("login");
   }
@@ -300,6 +330,11 @@ function App() {
     }
   }
 
+=======
+    setScreen("login");
+  }
+
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   // ── Ações de jornada ─────────────────────────────────────────────────────
 
   async function handleStart() {
@@ -353,6 +388,10 @@ function App() {
       showToast("Nenhuma jornada ativa.", "error");
       return;
     }
+<<<<<<< HEAD
+=======
+    // Pede confirmação antes de encerrar
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
     setConfirmExit(true);
   }
 
@@ -383,15 +422,33 @@ function App() {
   const currentStatus = STATUS_MAP[status];
   const isManager = userData.perfil && userData.perfil !== "colaborador";
 
+<<<<<<< HEAD
   const userInitials = userData.nome
     ? userData.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
     : "?";
 
+=======
+  // ── Iniciais do usuário para avatar ──────────────────────────────────────
+
+  const userInitials = userData.nome
+    ? userData.nome
+        .split(" ")
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+    : "?";
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDERS
   // ═══════════════════════════════════════════════════════════════════════════
 
+<<<<<<< HEAD
+=======
+  // ── Tela de Intro ─────────────────────────────────────────────────────────
+
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   if (screen === "intro") {
     return (
       <>
@@ -409,10 +466,20 @@ function App() {
     );
   }
 
+<<<<<<< HEAD
+=======
+  // ── Tela de Cadastro ──────────────────────────────────────────────────────
+
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   if (screen === "cadastro") {
     return <Cadastro onGoLogin={() => setScreen("login")} />;
   }
 
+<<<<<<< HEAD
+=======
+  // ── Tela de Login ─────────────────────────────────────────────────────────
+
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   if (screen === "login") {
     return (
       <div className="login-wrapper">
@@ -424,6 +491,7 @@ function App() {
 
           <form onSubmit={handleLogin} className="login-form" noValidate>
             <div className="input-group">
+<<<<<<< HEAD
               <input type="text" placeholder="CPF" value={cpf} onChange={(e) => setCpf(formatCpf(e.target.value))} inputMode="numeric" autoComplete="username" required aria-label="CPF" />
             </div>
             <div className="input-group">
@@ -434,19 +502,83 @@ function App() {
 
             <button type="submit" className="login-button" disabled={loginLoading}>
               {loginLoading ? <span className="btn-loading"><span className="spinner" /> ENTRANDO…</span> : "ENTRAR"}
+=======
+              <input
+                type="text"
+                placeholder="CPF"
+                value={cpf}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
+                inputMode="numeric"
+                autoComplete="username"
+                required
+                aria-label="CPF"
+              />
+            </div>
+
+            <div className="input-group">
+              <input
+                type="password"
+                placeholder="SENHA"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                autoComplete="current-password"
+                required
+                aria-label="Senha"
+              />
+            </div>
+
+            {loginError && (
+              <div className="login-error" role="alert">
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="login-button"
+              disabled={loginLoading}
+            >
+              {loginLoading ? (
+                <span className="btn-loading">
+                  <span className="spinner" />
+                  ENTRANDO…
+                </span>
+              ) : (
+                "ENTRAR"
+              )}
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
             </button>
           </form>
 
           <div className="login-footer">
+<<<<<<< HEAD
             <a href="#" onClick={(e) => { e.preventDefault(); setScreen("cadastro"); }}>CRIAR CONTA</a>
             <a href="#" onClick={(e) => e.preventDefault()}>ESQUECI A SENHA</a>
+=======
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setScreen("cadastro");
+              }}
+            >
+              CRIAR CONTA
+            </a>
+            <a href="#" onClick={(e) => e.preventDefault()}>
+              ESQUECI A SENHA
+            </a>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
           </div>
         </div>
       </div>
     );
   }
 
+<<<<<<< HEAD
   // ── Topbar ───────────────────────────────────────────────────────────────
+=======
+  // ── Topbar compartilhada ──────────────────────────────────────────────────
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   const Topbar = () => (
     <header className="topbar">
@@ -457,7 +589,14 @@ function App() {
       <nav className="topbar__nav" aria-label="Menu principal">
         <button
           className={abaAtiva === "ponto" && screen === "app" ? "active" : ""}
+<<<<<<< HEAD
           onClick={() => { setAbaAtiva("ponto"); if (screen !== "app") setScreen("app"); }}
+=======
+          onClick={() => {
+            setAbaAtiva("ponto");
+            if (screen !== "app") setScreen("app");
+          }}
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
         >
           MEU RELÓGIO
         </button>
@@ -468,7 +607,11 @@ function App() {
         {isManager && (
           <button
             className={abaAtiva === "gestao" ? "active" : ""}
+<<<<<<< HEAD
             onClick={() => { setAbaAtiva("gestao"); if (screen !== "app") setScreen("app"); }}
+=======
+            onClick={() => setAbaAtiva("gestao")}
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
           >
             GESTÃO
           </button>
@@ -477,6 +620,7 @@ function App() {
 
       <div
         className="topbar__user"
+<<<<<<< HEAD
         onClick={() => {
           setEditNome(userData.nome);
           setEditFoto(userData.foto_perfil || "");
@@ -491,16 +635,34 @@ function App() {
         ) : (
           <span className="topbar__user-initials">{userInitials}</span>
         )}
+=======
+        onClick={handleLogout}
+        title={`Sair (${userData.nome || "usuário"})`}
+        role="button"
+        aria-label="Sair da conta"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && handleLogout()}
+      >
+        <span className="topbar__user-initials">{userInitials}</span>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
       </div>
     </header>
   );
 
+<<<<<<< HEAD
   // ── Tela de Início (Hero) ────────────────────────────────────────────────
+=======
+  // ── Tela de Início (hero) ─────────────────────────────────────────────────
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   if (screen === "inicio" && isLogged) {
     return (
       <div className="wrapper">
         <Topbar />
+<<<<<<< HEAD
+=======
+
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
         <main className="hero">
           {userData.nome && (
             <p className="hero-greeting">
@@ -509,16 +671,28 @@ function App() {
           )}
           <section className="hero-card">
             <img src={LogoNexus} alt="Nexus" className="hero-card__logo" />
+<<<<<<< HEAD
             <button className="hero-card__button" onClick={() => setScreen("app")}>
+=======
+
+            <button
+              className="hero-card__button"
+              onClick={() => setScreen("app")}
+            >
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
               INICIAR JORNADA
             </button>
           </section>
         </main>
+<<<<<<< HEAD
         {showPerfilModal && <PerfilModal />}
+=======
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
       </div>
     );
   }
 
+<<<<<<< HEAD
   // ── Modais Auxiliares ────────────────────────────────────────────────────
 
   const PerfilModal = () => (
@@ -589,6 +763,9 @@ function App() {
   );
 
   // ── App Principal ────────────────────────────────────────────────────────
+=======
+  // ── Tela principal (ponto) ────────────────────────────────────────────────
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   return (
     <div className="wrapper">
@@ -606,27 +783,62 @@ function App() {
             </div>
 
             <div className="grid">
+<<<<<<< HEAD
               <div className="info-col">
                 <div className="info-block">
                   <div className="info-label">Início</div>
                   <div className={`info-value ${!startTime ? "dim" : ""}`}>{fmtTime(startTime)}</div>
+=======
+              {/* Coluna de informações */}
+              <div className="info-col">
+                <div className="info-block">
+                  <div className="info-label">Início</div>
+                  <div className={`info-value ${!startTime ? "dim" : ""}`}>
+                    {fmtTime(startTime)}
+                  </div>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                 </div>
 
                 <div className="info-block">
                   <div className="info-label">
+<<<<<<< HEAD
                     Pausas {pauseLog.length > 0 && <span className="pause-count"> ({pauseLog.length})</span>}
                   </div>
+=======
+                    Pausas
+                    {pauseLog.length > 0 && (
+                      <span className="pause-count"> ({pauseLog.length})</span>
+                    )}
+                  </div>
+
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                   {pauseLog.length === 0 ? (
                     <span className="pause-empty">— sem pausas —</span>
                   ) : (
                     <table className="pause-table">
+<<<<<<< HEAD
                       <thead><tr><th>#</th><th>Início</th><th>Fim</th></tr></thead>
+=======
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Início</th>
+                          <th>Fim</th>
+                        </tr>
+                      </thead>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                       <tbody>
                         {pauseLog.map((p, i) => (
                           <tr key={i}>
                             <td>{i + 1}</td>
                             <td>{fmtTime(p.in)}</td>
+<<<<<<< HEAD
                             <td className={!p.out ? "open" : ""}>{p.out ? fmtTime(p.out) : "em curso…"}</td>
+=======
+                            <td className={!p.out ? "open" : ""}>
+                              {p.out ? fmtTime(p.out) : "em curso…"}
+                            </td>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                           </tr>
                         ))}
                       </tbody>
@@ -636,6 +848,7 @@ function App() {
 
                 <div className="info-block">
                   <div className="info-label">Fim</div>
+<<<<<<< HEAD
                   <div className={`info-value ${!endTime ? "dim" : ""}`}>{fmtTime(endTime)}</div>
                 </div>
               </div>
@@ -656,10 +869,48 @@ function App() {
                 <div className="stat-block">
                   <div className="info-label">Tempo em Pausas</div>
                   <div className="stat-value stat-value--paused">{fmtSeconds(totalPauseSec)}</div>
+=======
+                  <div className={`info-value ${!endTime ? "dim" : ""}`}>
+                    {fmtTime(endTime)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Cronômetro */}
+              <div className="chrono-area">
+                <div className="chrono-label">Tempo Conectado</div>
+                <div
+                  className={`chrono-display chrono-display--${currentStatus.chrono}`}
+                  aria-live="off"
+                  aria-label={`Tempo conectado: ${fmtSeconds(connectedSec)}`}
+                >
+                  {fmtSeconds(connectedSec)}
+                </div>
+                <div className="next-pause-hint" aria-live="polite">
+                  {currentStatus.hint}
+                </div>
+              </div>
+
+              {/* Estatísticas */}
+              <div className="stats-area">
+                <div className="stat-block">
+                  <div className="info-label">Tempo Trabalhado</div>
+                  <div className="stat-value stat-value--worked">
+                    {fmtSeconds(workedSec)}
+                  </div>
+                </div>
+
+                <div className="stat-block">
+                  <div className="info-label">Tempo em Pausas</div>
+                  <div className="stat-value stat-value--paused">
+                    {fmtSeconds(totalPauseSec)}
+                  </div>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                 </div>
               </div>
             </div>
 
+<<<<<<< HEAD
             <div className="actions">
               <button className="btn btn-start" onClick={handleStart} disabled={status !== "idle" || actionLoading}>
                 {actionLoading && status === "idle" ? <span className="spinner spinner--dark" /> : null} Iniciar
@@ -668,11 +919,41 @@ function App() {
                 {status === "paused" ? "Retomar" : "Pausar"}
               </button>
               <button className="btn btn-exit" onClick={handleExit} disabled={status === "idle" || status === "done" || actionLoading}>
+=======
+            {/* Ações */}
+            <div className="actions">
+              <button
+                className="btn btn-start"
+                onClick={handleStart}
+                disabled={status !== "idle" || actionLoading}
+                aria-label="Iniciar jornada"
+              >
+                {actionLoading && status === "idle" ? <span className="spinner spinner--dark" /> : null}
+                Iniciar
+              </button>
+
+              <button
+                className="btn btn-pause"
+                onClick={handlePause}
+                disabled={status === "idle" || status === "done" || actionLoading}
+                aria-label={status === "paused" ? "Retomar jornada" : "Pausar jornada"}
+              >
+                {status === "paused" ? "Retomar" : "Pausar"}
+              </button>
+
+              <button
+                className="btn btn-exit"
+                onClick={handleExit}
+                disabled={status === "idle" || status === "done" || actionLoading}
+                aria-label="Encerrar jornada"
+              >
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                 Saída
               </button>
             </div>
           </div>
         ) : (
+<<<<<<< HEAD
 
           /* PAINEL DE GESTÃO */
           <div className="panel panel--gestao" style={{ padding: '32px', maxWidth: '860px', width: '100%', color: 'white' }}>
@@ -729,10 +1010,16 @@ function App() {
                 </table>
               </div>
             )}
+=======
+          <div className="panel panel--gestao">
+            <h2>Painel de Gestão</h2>
+            <p>Área reservada para funções administrativas.</p>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
           </div>
         )}
       </main>
 
+<<<<<<< HEAD
       <div className={`toast toast--${toast.type} ${toast.msg ? "show" : ""}`} role="status">
         {toast.msg}
       </div>
@@ -745,16 +1032,56 @@ function App() {
             <div className="modal-actions">
               <button className="btn btn-cancel" onClick={() => setConfirmExit(false)}>Cancelar</button>
               <button className="btn btn-exit" onClick={confirmHandleExit}>Confirmar Saída</button>
+=======
+      {/* Toast de feedback */}
+      <div
+        className={`toast toast--${toast.type} ${toast.msg ? "show" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
+        {toast.msg}
+      </div>
+
+      {/* Modal de confirmação de saída */}
+      {confirmExit && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Confirmar encerramento">
+          <div className="modal-card">
+            <h3 className="modal-title">Encerrar Jornada?</h3>
+            <p className="modal-body">
+              Tem certeza que deseja registrar sua saída?
+              {status === "paused" && " A pausa ativa será finalizada automaticamente."}
+            </p>
+            <div className="modal-actions">
+              <button
+                className="btn btn-cancel"
+                onClick={() => setConfirmExit(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-exit"
+                onClick={confirmHandleExit}
+              >
+                Confirmar Saída
+              </button>
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
             </div>
           </div>
         </div>
       )}
+<<<<<<< HEAD
 
       {showPerfilModal && <PerfilModal />}
       {gestaoModal.show && <ModalEdicaoGestor />}
 
+=======
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
     </div>
   );
 }
 
+<<<<<<< HEAD
 export default App;
+=======
+export default App;
+>>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
