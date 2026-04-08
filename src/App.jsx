@@ -3,6 +3,8 @@ import axios from "axios";
 import "./App.css";
 import LogoNexus from "./assets/logo-nexus.svg";
 import Cadastro from "./cadastro";
+import { DailySummaryScreen } from "./components";
+
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -14,9 +16,10 @@ function fmtTime(date) {
 }
 
 function fmtSeconds(totalSec) {
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
+  const safe = Number(totalSec || 0);
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = safe % 60;
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
@@ -33,10 +36,11 @@ function getAuthHeader() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-<<<<<<< HEAD
-// ── Compressor de Imagem (Evita travar a tela com fotos grandes) ─────────────
+// ── Compressor de imagem ────────────────────────────────────────────────────
+
 function compressImage(file, callback) {
   if (!file) return;
+
   const reader = new FileReader();
   reader.onload = (event) => {
     const img = new Image();
@@ -44,6 +48,7 @@ function compressImage(file, callback) {
       const canvas = document.createElement("canvas");
       const MAX_WIDTH = 250;
       const MAX_HEIGHT = 250;
+
       let width = img.width;
       let height = img.height;
 
@@ -52,46 +57,47 @@ function compressImage(file, callback) {
           height *= MAX_WIDTH / width;
           width = MAX_WIDTH;
         }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
-        }
+      } else if (height > MAX_HEIGHT) {
+        width *= MAX_HEIGHT / height;
+        height = MAX_HEIGHT;
       }
 
       canvas.width = width;
       canvas.height = height;
+
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Comprime para JPEG com qualidade 70%
       const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
       callback(dataUrl);
     };
+
     img.src = event.target.result;
   };
+
   reader.readAsDataURL(file);
 }
 
-// ─── Mapa de status ───────────────────────────────────────────────────────────
+// ─── Mapa de status ─────────────────────────────────────────────────────────
 
 const STATUS_MAP = {
   idle: { badge: "idle", label: "Não Iniciado", chrono: "", hint: "" },
-  working: { badge: "working", label: "Trabalhando", chrono: "working", hint: "JORNADA EM ANDAMENTO" },
-  paused: { badge: "paused", label: "Em Pausa", chrono: "paused", hint: "RETORNE PARA CONTINUAR" },
+  working: {
+    badge: "working",
+    label: "Trabalhando",
+    chrono: "working",
+    hint: "JORNADA EM ANDAMENTO",
+  },
+  paused: {
+    badge: "paused",
+    label: "Em Pausa",
+    chrono: "paused",
+    hint: "RETORNE PARA CONTINUAR",
+  },
   done: { badge: "done", label: "Encerrado", chrono: "done", hint: "" },
-=======
-// ─── Mapa de status ───────────────────────────────────────────────────────────
-
-const STATUS_MAP = {
-  idle:    { badge: "idle",    label: "Não Iniciado", chrono: "",        hint: "" },
-  working: { badge: "working", label: "Trabalhando",  chrono: "working", hint: "JORNADA EM ANDAMENTO" },
-  paused:  { badge: "paused",  label: "Em Pausa",     chrono: "paused",  hint: "RETORNE PARA CONTINUAR" },
-  done:    { badge: "done",    label: "Encerrado",    chrono: "done",    hint: "" },
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 };
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Componente principal ───────────────────────────────────────────────────
 
 function App() {
   // Telas: intro | login | cadastro | inicio | app
@@ -99,11 +105,11 @@ function App() {
 
   // Auth
   const [isLogged, setIsLogged] = useState(false);
-<<<<<<< HEAD
-  const [userData, setUserData] = useState({ nome: "", perfil: "", foto_perfil: "" });
-=======
-  const [userData, setUserData] = useState({ nome: "", perfil: "" });
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
+  const [userData, setUserData] = useState({
+    nome: "",
+    perfil: "",
+    foto_perfil: "",
+  });
   const [cpf, setCpf] = useState("");
   const [senha, setSenha] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -124,14 +130,17 @@ function App() {
   const [toast, setToast] = useState({ msg: "", type: "info" });
   const [confirmExit, setConfirmExit] = useState(false);
 
-<<<<<<< HEAD
-  // Modal do PRÓPRIO Perfil
+  // Resumo do dia
+  const [showDailySummary, setShowDailySummary] = useState(false);
+  const [summarySnapshot, setSummarySnapshot] = useState(null);
+
+  // Modal do próprio perfil
   const [showPerfilModal, setShowPerfilModal] = useState(false);
   const [editNome, setEditNome] = useState("");
   const [editFoto, setEditFoto] = useState("");
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
 
-  // Painel de GESTÃO
+  // Painel de gestão
   const [equipe, setEquipe] = useState([]);
   const [loadingEquipe, setLoadingEquipe] = useState(false);
   const [gestaoModal, setGestaoModal] = useState({ show: false, colab: null });
@@ -139,8 +148,6 @@ function App() {
   const [gestaoFoto, setGestaoFoto] = useState("");
   const [salvandoGestao, setSalvandoGestao] = useState(false);
 
-=======
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   // ── Intro: transição automática ──────────────────────────────────────────
 
   useEffect(() => {
@@ -167,8 +174,7 @@ function App() {
     return () => clearInterval(interval);
   }, [status]);
 
-<<<<<<< HEAD
-  // ── Carregar Equipe (Gestor) ─────────────────────────────────────────────
+  // ── Carregar equipe (gestor) ─────────────────────────────────────────────
 
   useEffect(() => {
     if (abaAtiva === "gestao" && userData.perfil !== "colaborador") {
@@ -179,22 +185,25 @@ function App() {
   async function carregarEquipe() {
     setLoadingEquipe(true);
     try {
-      const { data } = await axios.get(`${API_BASE}/gestor/equipe`, { headers: getAuthHeader() });
+      const { data } = await axios.get(`${API_BASE}/gestor/equipe`, {
+        headers: getAuthHeader(),
+      });
       setEquipe(data.equipe || []);
-    } catch (e) {
+    } catch {
       showToast("Erro ao carregar equipe.", "error");
+    } finally {
+      setLoadingEquipe(false);
     }
-    setLoadingEquipe(false);
   }
 
-  // ── Toast com tipo ───────────────────────────────────────────────────────
-=======
-  // ── Toast com tipo (info | error | success) ──────────────────────────────
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
+  // ── Toast ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!toast.msg) return;
-    const timer = setTimeout(() => setToast({ msg: "", type: "info" }), 3500);
+    const timer = setTimeout(
+      () => setToast({ msg: "", type: "info" }),
+      3500
+    );
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -211,7 +220,13 @@ function App() {
     }, 0);
   }, [pauseLog, now]);
 
-  const connectedSec = startTime ? Math.floor((now - startTime) / 1000) : 0;
+  const connectedSec =
+    startTime && (status === "working" || status === "paused")
+      ? Math.floor((now - startTime) / 1000)
+      : startTime && endTime
+      ? Math.floor((endTime - startTime) / 1000)
+      : 0;
+
   const workedSec = Math.max(0, connectedSec - totalPauseSec);
 
   // ── Integração com backend ───────────────────────────────────────────────
@@ -246,11 +261,11 @@ function App() {
       localStorage.setItem("nexus_nome", data.nome);
       localStorage.setItem("nexus_perfil", data.perfil);
 
-<<<<<<< HEAD
-      setUserData({ nome: data.nome, perfil: data.perfil, foto_perfil: data.foto_perfil });
-=======
-      setUserData({ nome: data.nome, perfil: data.perfil });
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
+      setUserData({
+        nome: data.nome,
+        perfil: data.perfil,
+        foto_perfil: data.foto_perfil || "",
+      });
       setIsLogged(true);
       setScreen("inicio");
     } catch (error) {
@@ -265,16 +280,30 @@ function App() {
     }
   }
 
-  // ── Logout ───────────────────────────────────────────────────────────────
+  // ── Logout com resumo do dia ─────────────────────────────────────────────
 
   function handleLogout() {
+    const snapshot = {
+      startTime,
+      endTime,
+      pauseLog,
+      connectedSec,
+      workedSec,
+      totalPauseSec,
+    };
+
+    setSummarySnapshot(snapshot);
+    setShowPerfilModal(false);
+    setShowDailySummary(true);
+  }
+
+  function handleCloseSummary() {
+    setShowDailySummary(false);
+    setSummarySnapshot(null);
+
     localStorage.clear();
     setIsLogged(false);
-<<<<<<< HEAD
     setUserData({ nome: "", perfil: "", foto_perfil: "" });
-=======
-    setUserData({ nome: "", perfil: "" });
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
     setCpf("");
     setSenha("");
     setLoginError("");
@@ -284,57 +313,65 @@ function App() {
     setEndTime(null);
     setPauseLog([]);
     setNow(Date.now());
-<<<<<<< HEAD
     setShowPerfilModal(false);
     setScreen("login");
   }
 
-  // ── Edição de Perfil Próprio ─────────────────────────────────────────────
+  // ── Edição de perfil próprio ─────────────────────────────────────────────
 
   async function salvarPerfil() {
     setSalvandoPerfil(true);
     try {
-      const { data } = await axios.put(`${API_BASE}/auth/perfil`, {
-        nome: editNome,
-        foto_perfil: editFoto
-      }, { headers: getAuthHeader() });
+      const { data } = await axios.put(
+        `${API_BASE}/auth/perfil`,
+        {
+          nome: editNome,
+          foto_perfil: editFoto,
+        },
+        { headers: getAuthHeader() }
+      );
 
-      setUserData({ ...userData, nome: data.nome, foto_perfil: data.foto_perfil });
+      setUserData((prev) => ({
+        ...prev,
+        nome: data.nome,
+        foto_perfil: data.foto_perfil,
+      }));
       localStorage.setItem("nexus_nome", data.nome);
       setShowPerfilModal(false);
       showToast("Perfil atualizado!", "success");
-    } catch (error) {
+    } catch {
       showToast("Erro ao atualizar perfil", "error");
     } finally {
       setSalvandoPerfil(false);
     }
   }
 
-  // ── Edição de Colaborador (Gestor) ───────────────────────────────────────
+  // ── Edição de colaborador (gestor) ───────────────────────────────────────
 
   async function salvarEdicaoGestor() {
+    if (!gestaoModal.colab) return;
+
     setSalvandoGestao(true);
     try {
-      await axios.put(`${API_BASE}/gestor/colaborador/${gestaoModal.colab.id}/perfil`, {
-        nome: gestaoNome,
-        foto_perfil: gestaoFoto
-      }, { headers: getAuthHeader() });
+      await axios.put(
+        `${API_BASE}/gestor/colaborador/${gestaoModal.colab.id}/perfil`,
+        {
+          nome: gestaoNome,
+          foto_perfil: gestaoFoto,
+        },
+        { headers: getAuthHeader() }
+      );
 
       showToast("Colaborador atualizado!", "success");
       setGestaoModal({ show: false, colab: null });
-      carregarEquipe(); // Recarrega a tabela para mostrar as mudanças
-    } catch (error) {
+      carregarEquipe();
+    } catch {
       showToast("Erro ao atualizar colaborador", "error");
     } finally {
       setSalvandoGestao(false);
     }
   }
 
-=======
-    setScreen("login");
-  }
-
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   // ── Ações de jornada ─────────────────────────────────────────────────────
 
   async function handleStart() {
@@ -342,6 +379,7 @@ function App() {
       showToast("Jornada já iniciada!", "error");
       return;
     }
+
     const current = Date.now();
     setStartTime(current);
     setEndTime(null);
@@ -349,7 +387,9 @@ function App() {
     setNow(current);
     setStatus("working");
     setActionLoading(true);
+
     await registrarNoBanco("entrada");
+
     setActionLoading(false);
     showToast(`Jornada iniciada — ${fmtTime(current)}`, "success");
   }
@@ -359,6 +399,7 @@ function App() {
       showToast("Ação não permitida neste estado.", "error");
       return;
     }
+
     const current = Date.now();
     setActionLoading(true);
 
@@ -388,10 +429,6 @@ function App() {
       showToast("Nenhuma jornada ativa.", "error");
       return;
     }
-<<<<<<< HEAD
-=======
-    // Pede confirmação antes de encerrar
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
     setConfirmExit(true);
   }
 
@@ -412,7 +449,9 @@ function App() {
     setEndTime(current);
     setNow(current);
     setStatus("done");
+
     await registrarNoBanco("saida");
+
     setActionLoading(false);
     showToast(`Jornada encerrada — ${fmtTime(current)}`, "success");
   }
@@ -422,14 +461,6 @@ function App() {
   const currentStatus = STATUS_MAP[status];
   const isManager = userData.perfil && userData.perfil !== "colaborador";
 
-<<<<<<< HEAD
-  const userInitials = userData.nome
-    ? userData.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()
-    : "?";
-
-=======
-  // ── Iniciais do usuário para avatar ──────────────────────────────────────
-
   const userInitials = userData.nome
     ? userData.nome
         .split(" ")
@@ -438,17 +469,251 @@ function App() {
         .join("")
         .toUpperCase()
     : "?";
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODAIS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const PerfilModal = () => (
+    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+      <div className="modal-card">
+        <h3 className="modal-title">Meu Perfil</h3>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "15px",
+            marginBottom: "24px",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            {editFoto ? (
+              <img
+                src={editFoto}
+                alt="Preview"
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  background: "#1e2d42",
+                  margin: "0 auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px",
+                }}
+              >
+                📷
+              </div>
+            )}
+          </div>
+
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            Foto de Perfil:
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => compressImage(e.target.files[0], setEditFoto)}
+              style={{ color: "white" }}
+            />
+          </label>
+
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            Nome:
+            <input
+              type="text"
+              value={editNome}
+              onChange={(e) => setEditNome(e.target.value)}
+              placeholder="Seu Nome"
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+                fontFamily: "var(--sans)",
+              }}
+            />
+          </label>
+        </div>
+
+        <div className="modal-actions" style={{ justifyContent: "space-between" }}>
+          <button className="btn btn-exit" onClick={handleLogout}>
+            Sair da Conta
+          </button>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              className="btn btn-cancel"
+              onClick={() => setShowPerfilModal(false)}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-start"
+              onClick={salvarPerfil}
+              disabled={salvandoPerfil}
+            >
+              {salvandoPerfil ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const ModalEdicaoGestor = () => (
+    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+      <div className="modal-card">
+        <h3 className="modal-title">Editar Colaborador</h3>
+        <p className="modal-body" style={{ marginTop: "-10px" }}>
+          {gestaoModal.colab?.cpf}
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "15px",
+            marginBottom: "24px",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            {gestaoFoto ? (
+              <img
+                src={gestaoFoto}
+                alt="Preview"
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  background: "#1e2d42",
+                  margin: "0 auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px",
+                }}
+              >
+                👤
+              </div>
+            )}
+          </div>
+
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            Nova Foto:
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => compressImage(e.target.files[0], setGestaoFoto)}
+              style={{ color: "white" }}
+            />
+          </label>
+
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            Nome do Colaborador:
+            <input
+              type="text"
+              value={gestaoNome}
+              onChange={(e) => setGestaoNome(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+                fontFamily: "var(--sans)",
+              }}
+            />
+          </label>
+        </div>
+
+        <div className="modal-actions">
+          <button
+            className="btn btn-cancel"
+            onClick={() => setGestaoModal({ show: false, colab: null })}
+          >
+            Cancelar
+          </button>
+          <button
+            className="btn btn-start"
+            onClick={salvarEdicaoGestor}
+            disabled={salvandoGestao}
+          >
+            {salvandoGestao ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDERS
   // ═══════════════════════════════════════════════════════════════════════════
 
-<<<<<<< HEAD
-=======
-  // ── Tela de Intro ─────────────────────────────────────────────────────────
+  if (showDailySummary) {
+    return (
+      <DailySummaryScreen
+        localAppState={summarySnapshot}
+        onClose={handleCloseSummary}
+        userName={userData.nome}
+      />
+    );
+  }
 
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   if (screen === "intro") {
     return (
       <>
@@ -466,20 +731,10 @@ function App() {
     );
   }
 
-<<<<<<< HEAD
-=======
-  // ── Tela de Cadastro ──────────────────────────────────────────────────────
-
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   if (screen === "cadastro") {
     return <Cadastro onGoLogin={() => setScreen("login")} />;
   }
 
-<<<<<<< HEAD
-=======
-  // ── Tela de Login ─────────────────────────────────────────────────────────
-
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
   if (screen === "login") {
     return (
       <div className="login-wrapper">
@@ -491,18 +746,6 @@ function App() {
 
           <form onSubmit={handleLogin} className="login-form" noValidate>
             <div className="input-group">
-<<<<<<< HEAD
-              <input type="text" placeholder="CPF" value={cpf} onChange={(e) => setCpf(formatCpf(e.target.value))} inputMode="numeric" autoComplete="username" required aria-label="CPF" />
-            </div>
-            <div className="input-group">
-              <input type="password" placeholder="SENHA" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="current-password" required aria-label="Senha" />
-            </div>
-
-            {loginError && <div className="login-error" role="alert">{loginError}</div>}
-
-            <button type="submit" className="login-button" disabled={loginLoading}>
-              {loginLoading ? <span className="btn-loading"><span className="spinner" /> ENTRANDO…</span> : "ENTRAR"}
-=======
               <input
                 type="text"
                 placeholder="CPF"
@@ -546,15 +789,10 @@ function App() {
               ) : (
                 "ENTRAR"
               )}
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
             </button>
           </form>
 
           <div className="login-footer">
-<<<<<<< HEAD
-            <a href="#" onClick={(e) => { e.preventDefault(); setScreen("cadastro"); }}>CRIAR CONTA</a>
-            <a href="#" onClick={(e) => e.preventDefault()}>ESQUECI A SENHA</a>
-=======
             <a
               href="#"
               onClick={(e) => {
@@ -567,18 +805,11 @@ function App() {
             <a href="#" onClick={(e) => e.preventDefault()}>
               ESQUECI A SENHA
             </a>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
           </div>
         </div>
       </div>
     );
   }
-
-<<<<<<< HEAD
-  // ── Topbar ───────────────────────────────────────────────────────────────
-=======
-  // ── Topbar compartilhada ──────────────────────────────────────────────────
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   const Topbar = () => (
     <header className="topbar">
@@ -589,29 +820,33 @@ function App() {
       <nav className="topbar__nav" aria-label="Menu principal">
         <button
           className={abaAtiva === "ponto" && screen === "app" ? "active" : ""}
-<<<<<<< HEAD
-          onClick={() => { setAbaAtiva("ponto"); if (screen !== "app") setScreen("app"); }}
-=======
           onClick={() => {
             setAbaAtiva("ponto");
             if (screen !== "app") setScreen("app");
           }}
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
         >
           MEU RELÓGIO
         </button>
-        <button disabled title="Em breve">HISTÓRICO</button>
-        <button disabled title="Em breve">HOLERITE</button>
-        <button disabled title="Em breve">MINHA EQUIPE</button>
-        <button disabled title="Em breve">RANKING</button>
+        <button disabled title="Em breve">
+          HISTÓRICO
+        </button>
+        <button disabled title="Em breve">
+          HOLERITE
+        </button>
+        <button disabled title="Em breve">
+          MINHA EQUIPE
+        </button>
+        <button disabled title="Em breve">
+          RANKING
+        </button>
+
         {isManager && (
           <button
             className={abaAtiva === "gestao" ? "active" : ""}
-<<<<<<< HEAD
-            onClick={() => { setAbaAtiva("gestao"); if (screen !== "app") setScreen("app"); }}
-=======
-            onClick={() => setAbaAtiva("gestao")}
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
+            onClick={() => {
+              setAbaAtiva("gestao");
+              if (screen !== "app") setScreen("app");
+            }}
           >
             GESTÃO
           </button>
@@ -620,7 +855,6 @@ function App() {
 
       <div
         className="topbar__user"
-<<<<<<< HEAD
         onClick={() => {
           setEditNome(userData.nome);
           setEditFoto(userData.foto_perfil || "");
@@ -629,40 +863,36 @@ function App() {
         title="Editar Perfil"
         role="button"
         tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            setEditNome(userData.nome);
+            setEditFoto(userData.foto_perfil || "");
+            setShowPerfilModal(true);
+          }
+        }}
       >
         {userData.foto_perfil ? (
-          <img src={userData.foto_perfil} alt="Perfil" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+          <img
+            src={userData.foto_perfil}
+            alt="Perfil"
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "50%",
+              objectFit: "cover",
+            }}
+          />
         ) : (
           <span className="topbar__user-initials">{userInitials}</span>
         )}
-=======
-        onClick={handleLogout}
-        title={`Sair (${userData.nome || "usuário"})`}
-        role="button"
-        aria-label="Sair da conta"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && handleLogout()}
-      >
-        <span className="topbar__user-initials">{userInitials}</span>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
       </div>
     </header>
   );
-
-<<<<<<< HEAD
-  // ── Tela de Início (Hero) ────────────────────────────────────────────────
-=======
-  // ── Tela de Início (hero) ─────────────────────────────────────────────────
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   if (screen === "inicio" && isLogged) {
     return (
       <div className="wrapper">
         <Topbar />
-<<<<<<< HEAD
-=======
-
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
         <main className="hero">
           {userData.nome && (
             <p className="hero-greeting">
@@ -671,101 +901,19 @@ function App() {
           )}
           <section className="hero-card">
             <img src={LogoNexus} alt="Nexus" className="hero-card__logo" />
-<<<<<<< HEAD
-            <button className="hero-card__button" onClick={() => setScreen("app")}>
-=======
 
             <button
               className="hero-card__button"
               onClick={() => setScreen("app")}
             >
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
               INICIAR JORNADA
             </button>
           </section>
         </main>
-<<<<<<< HEAD
         {showPerfilModal && <PerfilModal />}
-=======
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
       </div>
     );
   }
-
-<<<<<<< HEAD
-  // ── Modais Auxiliares ────────────────────────────────────────────────────
-
-  const PerfilModal = () => (
-    <div className="modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="modal-card">
-        <h3 className="modal-title">Meu Perfil</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '24px' }}>
-          <div style={{ textAlign: 'center' }}>
-            {editFoto ? (
-              <img src={editFoto} alt="Preview" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e2d42', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📷</div>
-            )}
-          </div>
-          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            Foto de Perfil:
-            <input type="file" accept="image/*" onChange={(e) => compressImage(e.target.files[0], setEditFoto)} style={{ color: 'white' }} />
-          </label>
-          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            Nome:
-            <input type="text" value={editNome} onChange={(e) => setEditNome(e.target.value)} placeholder="Seu Nome" style={{ width: '100%', padding: '10px', background: '#111418', color: 'white', border: '1px solid #4b5563', borderRadius: '8px', fontFamily: 'var(--sans)' }} />
-          </label>
-        </div>
-        <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
-          <button className="btn btn-exit" onClick={handleLogout}>Sair da Conta</button>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-cancel" onClick={() => setShowPerfilModal(false)}>Cancelar</button>
-            <button className="btn btn-start" onClick={salvarPerfil} disabled={salvandoPerfil}>
-              {salvandoPerfil ? "Salvando..." : "Salvar"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const ModalEdicaoGestor = () => (
-    <div className="modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="modal-card">
-        <h3 className="modal-title">Editar Colaborador</h3>
-        <p className="modal-body" style={{ marginTop: '-10px' }}>{gestaoModal.colab.cpf}</p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '24px' }}>
-          <div style={{ textAlign: 'center' }}>
-            {gestaoFoto ? (
-              <img src={gestaoFoto} alt="Preview" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#1e2d42', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>👤</div>
-            )}
-          </div>
-          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            Nova Foto:
-            <input type="file" accept="image/*" onChange={(e) => compressImage(e.target.files[0], setGestaoFoto)} style={{ color: 'white' }} />
-          </label>
-          <label style={{ fontSize: '12px', color: 'var(--text-mid)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            Nome do Colaborador:
-            <input type="text" value={gestaoNome} onChange={(e) => setGestaoNome(e.target.value)} style={{ width: '100%', padding: '10px', background: '#111418', color: 'white', border: '1px solid #4b5563', borderRadius: '8px', fontFamily: 'var(--sans)' }} />
-          </label>
-        </div>
-        <div className="modal-actions">
-          <button className="btn btn-cancel" onClick={() => setGestaoModal({ show: false, colab: null })}>Cancelar</button>
-          <button className="btn btn-start" onClick={salvarEdicaoGestor} disabled={salvandoGestao}>
-            {salvandoGestao ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── App Principal ────────────────────────────────────────────────────────
-=======
-  // ── Tela principal (ponto) ────────────────────────────────────────────────
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
 
   return (
     <div className="wrapper">
@@ -783,42 +931,26 @@ function App() {
             </div>
 
             <div className="grid">
-<<<<<<< HEAD
-              <div className="info-col">
-                <div className="info-block">
-                  <div className="info-label">Início</div>
-                  <div className={`info-value ${!startTime ? "dim" : ""}`}>{fmtTime(startTime)}</div>
-=======
-              {/* Coluna de informações */}
               <div className="info-col">
                 <div className="info-block">
                   <div className="info-label">Início</div>
                   <div className={`info-value ${!startTime ? "dim" : ""}`}>
                     {fmtTime(startTime)}
                   </div>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                 </div>
 
                 <div className="info-block">
                   <div className="info-label">
-<<<<<<< HEAD
-                    Pausas {pauseLog.length > 0 && <span className="pause-count"> ({pauseLog.length})</span>}
-                  </div>
-=======
                     Pausas
                     {pauseLog.length > 0 && (
                       <span className="pause-count"> ({pauseLog.length})</span>
                     )}
                   </div>
 
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                   {pauseLog.length === 0 ? (
                     <span className="pause-empty">— sem pausas —</span>
                   ) : (
                     <table className="pause-table">
-<<<<<<< HEAD
-                      <thead><tr><th>#</th><th>Início</th><th>Fim</th></tr></thead>
-=======
                       <thead>
                         <tr>
                           <th>#</th>
@@ -826,19 +958,14 @@ function App() {
                           <th>Fim</th>
                         </tr>
                       </thead>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                       <tbody>
                         {pauseLog.map((p, i) => (
                           <tr key={i}>
                             <td>{i + 1}</td>
                             <td>{fmtTime(p.in)}</td>
-<<<<<<< HEAD
-                            <td className={!p.out ? "open" : ""}>{p.out ? fmtTime(p.out) : "em curso…"}</td>
-=======
                             <td className={!p.out ? "open" : ""}>
                               {p.out ? fmtTime(p.out) : "em curso…"}
                             </td>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                           </tr>
                         ))}
                       </tbody>
@@ -848,41 +975,17 @@ function App() {
 
                 <div className="info-block">
                   <div className="info-label">Fim</div>
-<<<<<<< HEAD
-                  <div className={`info-value ${!endTime ? "dim" : ""}`}>{fmtTime(endTime)}</div>
-                </div>
-              </div>
-
-              <div className="chrono-area">
-                <div className="chrono-label">Tempo Conectado</div>
-                <div className={`chrono-display chrono-display--${currentStatus.chrono}`} aria-live="off">
-                  {fmtSeconds(connectedSec)}
-                </div>
-                <div className="next-pause-hint" aria-live="polite">{currentStatus.hint}</div>
-              </div>
-
-              <div className="stats-area">
-                <div className="stat-block">
-                  <div className="info-label">Tempo Trabalhado</div>
-                  <div className="stat-value stat-value--worked">{fmtSeconds(workedSec)}</div>
-                </div>
-                <div className="stat-block">
-                  <div className="info-label">Tempo em Pausas</div>
-                  <div className="stat-value stat-value--paused">{fmtSeconds(totalPauseSec)}</div>
-=======
                   <div className={`info-value ${!endTime ? "dim" : ""}`}>
                     {fmtTime(endTime)}
                   </div>
                 </div>
               </div>
 
-              {/* Cronômetro */}
               <div className="chrono-area">
                 <div className="chrono-label">Tempo Conectado</div>
                 <div
                   className={`chrono-display chrono-display--${currentStatus.chrono}`}
                   aria-live="off"
-                  aria-label={`Tempo conectado: ${fmtSeconds(connectedSec)}`}
                 >
                   {fmtSeconds(connectedSec)}
                 </div>
@@ -891,7 +994,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Estatísticas */}
               <div className="stats-area">
                 <div className="stat-block">
                   <div className="info-label">Tempo Trabalhado</div>
@@ -899,44 +1001,33 @@ function App() {
                     {fmtSeconds(workedSec)}
                   </div>
                 </div>
-
                 <div className="stat-block">
                   <div className="info-label">Tempo em Pausas</div>
                   <div className="stat-value stat-value--paused">
                     {fmtSeconds(totalPauseSec)}
                   </div>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                 </div>
               </div>
             </div>
 
-<<<<<<< HEAD
-            <div className="actions">
-              <button className="btn btn-start" onClick={handleStart} disabled={status !== "idle" || actionLoading}>
-                {actionLoading && status === "idle" ? <span className="spinner spinner--dark" /> : null} Iniciar
-              </button>
-              <button className="btn btn-pause" onClick={handlePause} disabled={status === "idle" || status === "done" || actionLoading}>
-                {status === "paused" ? "Retomar" : "Pausar"}
-              </button>
-              <button className="btn btn-exit" onClick={handleExit} disabled={status === "idle" || status === "done" || actionLoading}>
-=======
-            {/* Ações */}
             <div className="actions">
               <button
                 className="btn btn-start"
                 onClick={handleStart}
                 disabled={status !== "idle" || actionLoading}
-                aria-label="Iniciar jornada"
               >
-                {actionLoading && status === "idle" ? <span className="spinner spinner--dark" /> : null}
+                {actionLoading && status === "idle" ? (
+                  <span className="spinner spinner--dark" />
+                ) : null}
                 Iniciar
               </button>
 
               <button
                 className="btn btn-pause"
                 onClick={handlePause}
-                disabled={status === "idle" || status === "done" || actionLoading}
-                aria-label={status === "paused" ? "Retomar jornada" : "Pausar jornada"}
+                disabled={
+                  status === "idle" || status === "done" || actionLoading
+                }
               >
                 {status === "paused" ? "Retomar" : "Pausar"}
               </button>
@@ -944,57 +1035,194 @@ function App() {
               <button
                 className="btn btn-exit"
                 onClick={handleExit}
-                disabled={status === "idle" || status === "done" || actionLoading}
-                aria-label="Encerrar jornada"
+                disabled={
+                  status === "idle" || status === "done" || actionLoading
+                }
               >
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
                 Saída
               </button>
             </div>
           </div>
         ) : (
-<<<<<<< HEAD
-
-          /* PAINEL DE GESTÃO */
-          <div className="panel panel--gestao" style={{ padding: '32px', maxWidth: '860px', width: '100%', color: 'white' }}>
-            <h2 style={{ fontFamily: 'var(--display)', fontSize: '1.4rem', letterSpacing: '1px' }}>Painel de Gestão</h2>
-            <p style={{ opacity: 0.7, fontSize: '0.9rem', marginTop: '8px', marginBottom: '24px' }}>Gerencie sua equipe e atualize informações.</p>
+          <div
+            className="panel panel--gestao"
+            style={{
+              padding: "32px",
+              maxWidth: "860px",
+              width: "100%",
+              color: "white",
+            }}
+          >
+            <h2
+              style={{
+                fontFamily: "var(--display)",
+                fontSize: "1.4rem",
+                letterSpacing: "1px",
+              }}
+            >
+              Painel de Gestão
+            </h2>
+            <p
+              style={{
+                opacity: 0.7,
+                fontSize: "0.9rem",
+                marginTop: "8px",
+                marginBottom: "24px",
+              }}
+            >
+              Gerencie sua equipe e atualize informações.
+            </p>
 
             {loadingEquipe ? (
-              <p style={{ color: 'var(--accent-cyan)', fontFamily: 'var(--mono)' }}>Carregando dados da equipe...</p>
+              <p
+                style={{
+                  color: "var(--accent-cyan)",
+                  fontFamily: "var(--mono)",
+                }}
+              >
+                Carregando dados da equipe...
+              </p>
             ) : equipe.length === 0 ? (
-              <p style={{ opacity: 0.5 }}>Nenhum colaborador encontrado na sua equipe.</p>
+              <p style={{ opacity: 0.5 }}>
+                Nenhum colaborador encontrado na sua equipe.
+              </p>
             ) : (
-              <div style={{ background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', overflow: 'hidden' }}>
-                <table className="pause-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: 'var(--bg-card2)' }}>
+              <div
+                style={{
+                  background: "var(--bg-card)",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border)",
+                  overflow: "hidden",
+                }}
+              >
+                <table
+                  className="pause-table"
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    borderCollapse: "collapse",
+                  }}
+                >
+                  <thead style={{ background: "var(--bg-card2)" }}>
                     <tr>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>FOTO</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>NOME</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>CPF</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>AÇÕES</th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        FOTO
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        NOME
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        CPF
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                          textAlign: "right",
+                        }}
+                      >
+                        AÇÕES
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {equipe.map((colab) => (
-                      <tr key={colab.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px 16px' }}>
+                      <tr
+                        key={colab.id}
+                        style={{ borderBottom: "1px solid var(--border)" }}
+                      >
+                        <td style={{ padding: "12px 16px" }}>
                           {colab.foto_perfil ? (
-                            <img src={colab.foto_perfil} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} />
+                            <img
+                              src={colab.foto_perfil}
+                              alt={colab.nome}
+                              style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                              }}
+                            />
                           ) : (
-                            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #1e2d42, #111927)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>👤</div>
+                            <div
+                              style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "50%",
+                                background:
+                                  "linear-gradient(135deg, #1e2d42, #111927)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "white",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              👤
+                            </div>
                           )}
                         </td>
-                        <td style={{ padding: '12px 16px', color: 'var(--text-hi)', fontFamily: 'var(--sans)', fontSize: '14px' }}>
-                          {colab.nome} {colab.perfil === "gestor" && <span style={{ fontSize: '10px', background: 'var(--accent-cyan)', color: 'black', padding: '2px 6px', borderRadius: '10px', marginLeft: '8px', fontWeight: 'bold' }}>GESTOR</span>}
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "var(--text-hi)",
+                            fontFamily: "var(--sans)",
+                            fontSize: "14px",
+                          }}
+                        >
+                          {colab.nome}
+                          {colab.perfil === "gestor" && (
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                background: "var(--accent-cyan)",
+                                color: "black",
+                                padding: "2px 6px",
+                                borderRadius: "10px",
+                                marginLeft: "8px",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              GESTOR
+                            </span>
+                          )}
                         </td>
-                        <td style={{ padding: '12px 16px', color: 'var(--text-mid)', fontFamily: 'var(--mono)', fontSize: '13px' }}>
+
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "var(--text-mid)",
+                            fontFamily: "var(--mono)",
+                            fontSize: "13px",
+                          }}
+                        >
                           {formatCpf(colab.cpf)}
                         </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+
+                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
                           <button
                             className="btn btn-cancel"
-                            style={{ padding: '6px 14px', fontSize: '11px', letterSpacing: '1px' }}
+                            style={{
+                              padding: "6px 14px",
+                              fontSize: "11px",
+                              letterSpacing: "1px",
+                            }}
                             onClick={() => {
                               setGestaoNome(colab.nome);
                               setGestaoFoto(colab.foto_perfil || "");
@@ -1010,16 +1238,10 @@ function App() {
                 </table>
               </div>
             )}
-=======
-          <div className="panel panel--gestao">
-            <h2>Painel de Gestão</h2>
-            <p>Área reservada para funções administrativas.</p>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
           </div>
         )}
       </main>
 
-<<<<<<< HEAD
       <div className={`toast toast--${toast.type} ${toast.msg ? "show" : ""}`} role="status">
         {toast.msg}
       </div>
@@ -1028,28 +1250,8 @@ function App() {
         <div className="modal-overlay">
           <div className="modal-card">
             <h3 className="modal-title">Encerrar Jornada?</h3>
-            <p className="modal-body">Tem certeza que deseja registrar sua saída?</p>
-            <div className="modal-actions">
-              <button className="btn btn-cancel" onClick={() => setConfirmExit(false)}>Cancelar</button>
-              <button className="btn btn-exit" onClick={confirmHandleExit}>Confirmar Saída</button>
-=======
-      {/* Toast de feedback */}
-      <div
-        className={`toast toast--${toast.type} ${toast.msg ? "show" : ""}`}
-        role="status"
-        aria-live="polite"
-      >
-        {toast.msg}
-      </div>
-
-      {/* Modal de confirmação de saída */}
-      {confirmExit && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Confirmar encerramento">
-          <div className="modal-card">
-            <h3 className="modal-title">Encerrar Jornada?</h3>
             <p className="modal-body">
               Tem certeza que deseja registrar sua saída?
-              {status === "paused" && " A pausa ativa será finalizada automaticamente."}
             </p>
             <div className="modal-actions">
               <button
@@ -1058,30 +1260,18 @@ function App() {
               >
                 Cancelar
               </button>
-              <button
-                className="btn btn-exit"
-                onClick={confirmHandleExit}
-              >
+              <button className="btn btn-exit" onClick={confirmHandleExit}>
                 Confirmar Saída
               </button>
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
             </div>
           </div>
         </div>
       )}
-<<<<<<< HEAD
 
       {showPerfilModal && <PerfilModal />}
       {gestaoModal.show && <ModalEdicaoGestor />}
-
-=======
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
     </div>
   );
 }
 
-<<<<<<< HEAD
 export default App;
-=======
-export default App;
->>>>>>> 75ab1b59d00087dd19ded8000d25ab652a2ac8fb
