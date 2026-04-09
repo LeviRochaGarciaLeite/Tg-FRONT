@@ -29,7 +29,14 @@ export function useDailySummary(localAppState = null) {
       const { data } = await axios.get(`${API_BASE}/ponto/resumo-dia`, {
         headers: getAuthHeader(),
       });
-      setSummary(data);
+      
+      // Se o backend retornou sem pontuação, calcula com base no estado local
+      if ((data.positivePoints == null || data.negativePoints == null) && localAppState) {
+        const localSummary = buildSummaryFromLocalState(localAppState);
+        setSummary({ ...data, ...localSummary });
+      } else {
+        setSummary(data);
+      }
     } catch (err) {
       // Fallback para estado local se backend não tiver o endpoint
       if (localAppState) {

@@ -4,7 +4,7 @@ import "./App.css";
 import LogoNexus from "./assets/logo-nexus.svg";
 import Cadastro from "./cadastro";
 import { DailySummaryScreen } from "./components";
-
+import Holerite from "./Holerite";
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -830,9 +830,15 @@ function App() {
         <button disabled title="Em breve">
           HISTÓRICO
         </button>
-        <button disabled title="Em breve">
-          HOLERITE
-        </button>
+       <button
+  className={abaAtiva === "holerite" ? "active" : ""}
+  onClick={() => { 
+    setAbaAtiva("holerite"); 
+    if (screen !== "app") setScreen("app"); 
+  }}
+>
+  HOLERITE
+</button>
         <button disabled title="Em breve">
           MINHA EQUIPE
         </button>
@@ -929,7 +935,6 @@ function App() {
                 <span>{currentStatus.label}</span>
               </div>
             </div>
-
             <div className="grid">
               <div className="info-col">
                 <div className="info-block">
@@ -1043,6 +1048,8 @@ function App() {
               </button>
             </div>
           </div>
+        ) : abaAtiva === "holerite" ? (
+          <Holerite userData={userData} />
         ) : (
           <div
             className="panel panel--gestao"
