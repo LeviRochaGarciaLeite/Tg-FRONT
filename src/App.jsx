@@ -5,6 +5,7 @@ import LogoNexus from "./assets/logo-nexus.svg";
 import Cadastro from "./cadastro";
 import { DailySummaryScreen } from "./components";
 import Holerite from "./Holerite";
+import MinhaEquipe from "./MinhaEquipe";
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -839,7 +840,13 @@ function App() {
 >
   HOLERITE
 </button>
-        <button disabled title="Em breve">
+        <button
+          className={abaAtiva === "equipe" ? "active" : ""}
+          onClick={() => {
+            setAbaAtiva("equipe");
+            if (screen !== "app") setScreen("app");
+          }}
+        >
           MINHA EQUIPE
         </button>
         <button disabled title="Em breve">
@@ -916,7 +923,7 @@ function App() {
             </button>
           </section>
         </main>
-        {showPerfilModal && <PerfilModal />}
+        {showPerfilModal && PerfilModal()}
       </div>
     );
   }
@@ -1050,6 +1057,8 @@ function App() {
           </div>
         ) : abaAtiva === "holerite" ? (
           <Holerite userData={userData} />
+        ) : abaAtiva === "equipe" ? (
+          <MinhaEquipe />
         ) : (
           <div
             className="panel panel--gestao"
@@ -1275,8 +1284,8 @@ function App() {
         </div>
       )}
 
-      {showPerfilModal && <PerfilModal />}
-      {gestaoModal.show && <ModalEdicaoGestor />}
+      {showPerfilModal && PerfilModal()}
+      {gestaoModal.show && ModalEdicaoGestor()}
     </div>
   );
 }
