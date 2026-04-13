@@ -460,7 +460,9 @@ function App() {
   // ── Derivados ────────────────────────────────────────────────────────────
 
   const currentStatus = STATUS_MAP[status];
-  const isManager = userData.perfil && userData.perfil !== "colaborador";
+  const perfilLower = (userData.perfil || "").toLowerCase();
+  const isManager = ["gestor", "admin"].includes(perfilLower);
+  const isSupervisor = perfilLower === "supervisor";
 
   const userInitials = userData.nome
     ? userData.nome
@@ -479,6 +481,26 @@ function App() {
     <div className="modal-overlay" style={{ zIndex: 9999 }}>
       <div className="modal-card">
         <h3 className="modal-title">Meu Perfil</h3>
+
+        {isSupervisor && (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(255,204,0,0.12)",
+              border: "1px solid rgba(255,204,0,0.35)",
+              borderRadius: 6,
+              padding: "4px 12px",
+              marginBottom: 8,
+              alignSelf: "flex-start",
+            }}
+          >
+            <span style={{ fontSize: 11, color: "var(--accent-gold)", fontFamily: "var(--display)", letterSpacing: 1, fontWeight: 700 }}>
+              ★ SUPERVISOR
+            </span>
+          </div>
+        )}
 
         <div
           style={{
@@ -831,15 +853,15 @@ function App() {
         <button disabled title="Em breve">
           HISTÓRICO
         </button>
-       <button
-  className={abaAtiva === "holerite" ? "active" : ""}
-  onClick={() => { 
-    setAbaAtiva("holerite"); 
-    if (screen !== "app") setScreen("app"); 
-  }}
->
-  HOLERITE
-</button>
+        <button
+          className={abaAtiva === "holerite" ? "active" : ""}
+          onClick={() => {
+            setAbaAtiva("holerite");
+            if (screen !== "app") setScreen("app");
+          }}
+        >
+          HOLERITE
+        </button>
         <button
           className={abaAtiva === "equipe" ? "active" : ""}
           onClick={() => {
@@ -1058,7 +1080,7 @@ function App() {
         ) : abaAtiva === "holerite" ? (
           <Holerite userData={userData} />
         ) : abaAtiva === "equipe" ? (
-          <MinhaEquipe />
+          <MinhaEquipe userData={userData} />
         ) : (
           <div
             className="panel panel--gestao"

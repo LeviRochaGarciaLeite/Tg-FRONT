@@ -1,4 +1,6 @@
-//telaequiep
+// MinhaEquipe.jsx
+// Adicione no App.jsx: import MinhaEquipe from "./MinhaEquipe";
+// E renderize quando abaAtiva === "equipe"
 
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -20,10 +22,6 @@ function AvatarCircle({ foto, nome, size = 72, isSuper = false }) {
         .toUpperCase()
     : "?";
 
-  const ringColor = isSuper
-    ? "rgba(255, 204, 0, 0.55)"
-    : "rgba(0, 200, 255, 0.4)";
-
   return (
     <div
       style={{
@@ -33,29 +31,6 @@ function AvatarCircle({ foto, nome, size = 72, isSuper = false }) {
         flexShrink: 0,
       }}
     >
-      {/* Anel */}
-      <svg
-        style={{
-          position: "absolute",
-          top: -4,
-          left: -4,
-          width: size + 8,
-          height: size + 8,
-          pointerEvents: "none",
-        }}
-        viewBox="0 0 80 80"
-        fill="none"
-      >
-        <circle
-          cx="40"
-          cy="40"
-          r="37"
-          stroke={ringColor}
-          strokeWidth="1.5"
-          strokeDasharray={isSuper ? "6 5" : "4 6"}
-        />
-      </svg>
-
       {/* Avatar */}
       <div
         style={{
@@ -157,47 +132,133 @@ function ProfileCard({ nome, perfil, foto, isSuper = false, vazio = false }) {
           letterSpacing: 1,
         }}
       >
-        {vazio ? "Aguardando" : perfil || isSuper ? "Supervisor" : "Colaborador"}
+        {vazio ? "Aguardando" : perfil ? perfil : isSuper ? "Supervisor" : "Colaborador"}
       </div>
     </div>
   );
 }
 
-export default function MinhaEquipe() {
+export default function MinhaEquipe({ userData }) {
   const [equipe, setEquipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
 
-  useEffect(() => {
-    async function carregarEquipe() {
-      setLoading(true);
-      try {
-        const { data } = await axios.get(`${API_BASE}/equipe/minha`, {
-          headers: getAuthHeader(),
-        });
-        setEquipe(data); // Espera: { supervisor: {...}, colaboradores: [{...}, {...}] }
-      } catch (e) {
-        // Se ainda não tem equipe, mostra tela vazia sem erro
-        if (e?.response?.status === 404) {
-          setEquipe(null);
-        } else {
-          setErro("Erro ao carregar os dados da equipe.");
-        }
-      }
-      setLoading(false);
-    }
+  // Lista de colaboradores disponíveis (supervisor)
+  const [disponiveis, setDisponiveis] = useState([]);
+  const [loadingDisponiveis, setLoadingDisponiveis] = useState(false);
+  const [adicionando, setAdicionando] = useState(null);
+  const [removendo, setRemovendo] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const [toast, setToast] = useState("");
 
+  const isSupervisor = (userData?.perfil || "").toLowerCase() === "supervisor";
+
+  // Limpar toast após 3s
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  async function carregarEquipe() {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`${API_BASE}/equipe/minha`, {
+        headers: getAuthHeader(),
+      });
+      setEquipe(data);
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        setEquipe(null);
+      } else {
+        setErro("Erro ao carregar os dados da equipe.");
+      }
+    }
+    setLoading(false);
+  }
+
+  // Carregar colaboradores disponíveis (supervisor)
+  async function carregarDisponiveis() {
+    setLoadingDisponiveis(true);
+    try {
+      const { data } = await axios.get(`${API_BASE}/equipe/disponiveis`, {
+        headers: getAuthHeader(),
+      });
+      setDisponiveis(data.disponiveis || []);
+    } catch {
+      setDisponiveis([]);
+    }
+    setLoadingDisponiveis(false);
+  }
+
+  useEffect(() => {
     carregarEquipe();
   }, []);
 
+  useEffect(() => {
+    if (isSupervisor) carregarDisponiveis();
+  }, [isSupervisor]);
+
   const supervisor = equipe?.supervisor || null;
-  const colaboradores = equipe?.colaboradores || [null, null];
+  const colaboradores = equipe?.membros || [];
+  const equipeCheia = colaboradores.length >= 2;
+
+  // Adicionar membro à equipe
+  async function adicionarMembro(colaboradorId) {
+    if (equipeCheia) return;
+    setAdicionando(colaboradorId);
+    try {
+      await axios.post(
+        `${API_BASE}/equipe/adicionar`,
+        { colaborador_id: colaboradorId },
+        { headers: getAuthHeader() }
+      );
+      await carregarEquipe();
+      await carregarDisponiveis();
+    } catch {
+      setErro("Erro ao adicionar colaborador.");
+    }
+    setAdicionando(null);
+  }
+
+  // Remover membro da equipe
+  async function removerMembro(colaboradorId) {
+    setRemovendo(colaboradorId);
+    try {
+      await axios.post(
+        `${API_BASE}/equipe/remover`,
+        { colaborador_id: colaboradorId },
+        { headers: getAuthHeader() }
+      );
+      await carregarEquipe();
+      await carregarDisponiveis();
+    } catch {
+      setErro("Erro ao remover colaborador.");
+    }
+    setRemovendo(null);
+  }
+
+  // Salvar equipe
+  async function salvarEquipe() {
+    setSalvando(true);
+    try {
+      const ids = (equipe?.membros || []).map((m) => m.id);
+      await axios.post(
+        `${API_BASE}/equipe/salvar`,
+        { membros_ids: ids },
+        { headers: getAuthHeader() }
+      );
+      setToast("Equipe salva com sucesso!");
+    } catch {
+      setErro("Erro ao salvar equipe.");
+    }
+    setSalvando(false);
+  }
 
   return (
     <>
       {/* Keyframes injetados uma vez */}
       <style>{`
-        @keyframes eq-spin { to { transform: rotate(360deg); } }
         @keyframes eq-fade-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
@@ -266,7 +327,7 @@ export default function MinhaEquipe() {
         )}
 
         {/* Sem equipe ainda */}
-        {!loading && !erro && !equipe && (
+        {!loading && !erro && !equipe && !isSupervisor && (
           <p
             style={{
               color: "var(--text-lo)",
@@ -282,7 +343,7 @@ export default function MinhaEquipe() {
         )}
 
         {/* Conteúdo da equipe */}
-        {!loading && !erro && (
+        {!loading && !erro && (equipe || isSupervisor) && (
           <>
             {/* Supervisor */}
             <div style={{ marginBottom: 12 }}>
@@ -316,39 +377,264 @@ export default function MinhaEquipe() {
                 justifyContent: "center",
                 gap: 32,
                 flexWrap: "wrap",
-                marginTop: 0,
+                marginTop: 28,
               }}
             >
-              {[0, 1].map((idx) => {
-                const colab = colaboradores[idx] || null;
-                return (
-                  <div key={idx}>
-                    <p
-                      style={{
-                        fontFamily: "var(--display)",
-                        fontSize: 10,
-                        letterSpacing: 2,
-                        color: "var(--accent-blue)",
-                        textTransform: "uppercase",
-                        textAlign: "center",
-                        marginBottom: 12,
-                        opacity: 0.85,
-                      }}
-                    >
-                      Colaborador
-                    </p>
-                    <ProfileCard
-                      nome={colab?.nome}
-                      perfil="Colaborador"
-                      foto={colab?.foto_perfil}
-                      isSuper={false}
-                      vazio={!colab}
-                    />
-                  </div>
-                );
-              })}
+              {colaboradores.length > 0
+                ? colaboradores.map((colab, idx) => (
+                    <div key={colab?.id || idx} style={{ position: "relative" }}>
+                      <ProfileCard
+                        nome={colab?.nome}
+                        perfil="Colaborador"
+                        foto={colab?.foto_perfil}
+                        isSuper={false}
+                        vazio={!colab}
+                      />
+                      {/* Pontuação */}
+                      {colab && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            display: "flex",
+                            justifyContent: "center",
+                            gap: 12,
+                            fontFamily: "var(--mono)",
+                            fontSize: 11,
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          <span style={{ color: "rgba(0,200,120,0.85)" }}>
+                            +{colab.pontos_positivos ?? 0}
+                          </span>
+                          <span style={{ color: "rgba(255,80,80,0.85)" }}>
+                            −{colab.pontos_negativos ?? 0}
+                          </span>
+                          <span
+                            style={{
+                              color:
+                                (colab.pontos_positivos ?? 0) - (colab.pontos_negativos ?? 0) >= 0
+                                  ? "var(--accent-cyan)"
+                                  : "rgba(255,80,80,0.85)",
+                              fontWeight: 700,
+                            }}
+                          >
+                            ={" "}
+                            {(colab.pontos_positivos ?? 0) - (colab.pontos_negativos ?? 0)}
+                          </span>
+                        </div>
+                      )}
+                      {/* Botão remover (supervisor) */}
+                      {isSupervisor && colab && (
+                        <button
+                          onClick={() => removerMembro(colab.id)}
+                          disabled={removendo === colab.id}
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            right: -8,
+                            width: 24,
+                            height: 24,
+                            borderRadius: "50%",
+                            background: "rgba(255,60,60,0.85)",
+                            color: "#fff",
+                            border: "none",
+                            cursor: removendo === colab.id ? "wait" : "pointer",
+                            fontSize: 14,
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            zIndex: 5,
+                            opacity: removendo === colab.id ? 0.5 : 1,
+                          }}
+                          title="Remover da equipe"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))
+                : [0, 1].map((idx) => (
+                    <div key={idx}>
+                      <ProfileCard
+                        nome={null}
+                        perfil="Colaborador"
+                        foto={null}
+                        isSuper={false}
+                        vazio
+                      />
+                    </div>
+                  ))}
             </div>
+
+            {/* Lista de colaboradores disponíveis — somente supervisor */}
+            {isSupervisor && (
+              <div
+                style={{
+                  marginTop: 40,
+                  width: "100%",
+                  maxWidth: 420,
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: "24px 20px",
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: "var(--display)",
+                    fontSize: 11,
+                    letterSpacing: 2,
+                    color: "var(--accent-gold)",
+                    textTransform: "uppercase",
+                    marginBottom: 14,
+                    textAlign: "center",
+                  }}
+                >
+                  Colaboradores Disponíveis {colaboradores.length}/2
+                </p>
+
+                {loadingDisponiveis && (
+                  <p
+                    style={{
+                      color: "var(--accent-cyan)",
+                      fontFamily: "var(--mono)",
+                      fontSize: 12,
+                      textAlign: "center",
+                    }}
+                  >
+                    Carregando...
+                  </p>
+                )}
+
+                {!loadingDisponiveis && disponiveis.length === 0 && (
+                  <p
+                    style={{
+                      color: "var(--text-lo)",
+                      fontFamily: "var(--sans)",
+                      fontSize: 12,
+                      textAlign: "center",
+                    }}
+                  >
+                    Nenhum colaborador disponível no momento.
+                  </p>
+                )}
+
+                {!loadingDisponiveis && disponiveis.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      maxHeight: 280,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {disponiveis.map((r) => (
+                      <div
+                        key={r.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          borderRadius: 8,
+                          padding: "8px 12px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <AvatarCircle
+                            foto={r.foto_perfil}
+                            nome={r.nome}
+                            size={32}
+                          />
+                          <span
+                            style={{
+                              fontFamily: "var(--sans)",
+                              fontSize: 13,
+                              color: "var(--text-hi)",
+                            }}
+                          >
+                            {r.nome}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => adicionarMembro(r.id)}
+                          disabled={adicionando === r.id || equipeCheia}
+                          style={{
+                            background: equipeCheia ? "rgba(255,255,255,0.15)" : "rgba(0,200,120,0.8)",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 5,
+                            padding: "4px 12px",
+                            fontFamily: "var(--display)",
+                            fontSize: 10,
+                            letterSpacing: 1,
+                            cursor: adicionando === r.id || equipeCheia ? "not-allowed" : "pointer",
+                            opacity: adicionando === r.id || equipeCheia ? 0.4 : 1,
+                          }}
+                          title={equipeCheia ? "Equipe já está completa (máx. 2)" : ""}
+                        >
+                          {adicionando === r.id ? "..." : equipeCheia ? "COMPLETA" : "ADICIONAR"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Botão salvar equipe (supervisor) */}
+            {isSupervisor && colaboradores.length > 0 && (
+              <button
+                onClick={salvarEquipe}
+                disabled={salvando}
+                style={{
+                  marginTop: 32,
+                  background: "linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "12px 40px",
+                  fontFamily: "var(--display)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  cursor: salvando ? "wait" : "pointer",
+                  opacity: salvando ? 0.6 : 1,
+                  transition: "opacity 0.2s",
+                }}
+              >
+                {salvando ? "SALVANDO..." : "SALVAR EQUIPE"}
+              </button>
+            )}
           </>
+        )}
+
+        {/* Toast de feedback */}
+        {toast && (
+          <div
+            style={{
+              position: "fixed",
+              bottom: 32,
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "rgba(0,200,120,0.92)",
+              color: "#fff",
+              fontFamily: "var(--sans)",
+              fontSize: 14,
+              fontWeight: 600,
+              padding: "12px 28px",
+              borderRadius: 8,
+              zIndex: 9999,
+              animation: "eq-fade-in 0.3s ease",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+            }}
+          >
+            {toast}
+          </div>
         )}
       </div>
     </>

@@ -75,7 +75,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
         <section className="ds-section">
           <div className="ds-grid ds-grid--2">
             <StatCard
-              icon="🕐"
+              icon=""
               label="Horário de Início"
               value={formatTime(summary.startedAt)}
               accent="#a78bfa"
@@ -94,7 +94,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
           <h2 className="ds-section__title">Tempos</h2>
           <div className="ds-grid ds-grid--3">
             <StatCard
-              icon="🔗"
+              icon="🔌"
               label="Tempo Conectado"
               value={formatSeconds(summary.connectedTimeInSeconds)}
               accent="#4db8ff"
@@ -106,7 +106,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
               accent="#00e5a0"
             />
             <StatCard
-              icon="☕"
+              icon="⏱"
               label="Tempo em Pausas"
               value={formatSeconds(summary.pauseTimeInSeconds)}
               accent="#f59e0b"
