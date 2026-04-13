@@ -4,6 +4,29 @@ import axios from "axios";
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const API_BASE = "http://127.0.0.1:5000/api";
 const DIA_PAGAMENTO = 8;
+const MES_INICIO = { mes: 3, ano: 2026 };
+const MESES_PT = [
+  "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
+
+function getHoleritesDisponiveis() {
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+  const diaAtual = hoje.getDate();
+  let mesLimite = diaAtual >= DIA_PAGAMENTO ? mesAtual : mesAtual - 1;
+  let anoLimite = anoAtual;
+  if (mesLimite === 0) { mesLimite = 12; anoLimite--; }
+
+  const lista = [];
+  let m = MES_INICIO.mes, a = MES_INICIO.ano;
+  while (a < anoLimite || (a === anoLimite && m <= mesLimite)) {
+    lista.push({ mes: m, ano: a });
+    if (++m > 12) { m = 1; a++; }
+  }
+  return lista;
+}
 
 function getAuthHeader() {
   const token = localStorage.getItem("nexus_token");
@@ -13,7 +36,7 @@ function getAuthHeader() {
 // ─── Holerite ─────────────────────────────────────────────────────────────────
 export default function Holerite({ userData = {} }) {
   const [dados, setDados] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const [okConfirmado, setOkConfirmado] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -22,16 +45,16 @@ export default function Holerite({ userData = {} }) {
   const [pdfBlob, setPdfBlob] = useState(null);
   const [pdfUrl, setPdfUrl] = useState(null);
 
+  const [mesSelecionado, setMesSelecionado] = useState(null);
+  const [anoSelecionado, setAnoSelecionado] = useState(null);
+
   const hoje = new Date();
-  const mesCompetencia = hoje.getDate() < DIA_PAGAMENTO
-    ? (hoje.getMonth() === 0 ? 12 : hoje.getMonth())
-    : hoje.getMonth() + 1;
-  const anoCompetencia = hoje.getDate() < DIA_PAGAMENTO && hoje.getMonth() === 0
-    ? hoje.getFullYear() - 1
-    : hoje.getFullYear();
+  const mesCompetencia = mesSelecionado;
+  const anoCompetencia = anoSelecionado;
 
   // ── Buscar dados do backend ────────────────────────────────────────────────
   const buscarDados = useCallback(async () => {
+    if (!mesCompetencia || !anoCompetencia) return;
     setLoading(true);
     setErro("");
     try {
@@ -48,6 +71,22 @@ export default function Holerite({ userData = {} }) {
   }, [mesCompetencia, anoCompetencia]);
 
   useEffect(() => { buscarDados(); }, [buscarDados]);
+
+  function voltarParaSelecao() {
+    setMesSelecionado(null);
+    setAnoSelecionado(null);
+    setDados(null);
+    setErro("");
+    setPdfBlob(null);
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    setPdfUrl(null);
+    setOkConfirmado(false);
+  }
+
+  function selecionarMes(mes, ano) {
+    setMesSelecionado(mes);
+    setAnoSelecionado(ano);
+  }
 
   // ── Gerar PDF com jsPDF ───────────────────────────────────────────────────
   const gerarPdf = useCallback(async () => {
@@ -361,10 +400,6 @@ export default function Holerite({ userData = {} }) {
 
   const primeiroNome = (dados?.colaborador?.nome || userData?.nome || "Colaborador").split(" ")[0];
 
-  const dataProxPgto = new Date(hoje.getFullYear(), hoje.getMonth(), DIA_PAGAMENTO);
-  if (dataProxPgto < hoje) dataProxPgto.setMonth(dataProxPgto.getMonth() + 1);
-  const dataPgtoFmt = dataProxPgto.toLocaleDateString("pt-BR");
-
   // ════════════════════════════════════════════════════════════════════════════
   return (
     <>
@@ -435,16 +470,82 @@ export default function Holerite({ userData = {} }) {
         .mini-spin { width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite; }
         .hl-error { padding:40px;text-align:center;font-family:var(--sans,'Exo 2',sans-serif);color:var(--accent-red,#ff3b55); }
         .hl-error button { margin-top:16px;padding:10px 24px;background:transparent;border:1px solid var(--accent-red,#ff3b55);border-radius:6px;color:var(--accent-red,#ff3b55);font-family:var(--display,'Rajdhani',sans-serif);font-size:13px;letter-spacing:.1em;cursor:pointer; }
+
+        .hl-meses-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
+        .hl-mes-btn {
+          display:flex; flex-direction:column; align-items:center; gap:8px;
+          padding:24px 20px; background:var(--bg-panel,#0d1422);
+          border:1px solid var(--border-hi,#2a4060); border-radius:var(--radius,8px);
+          cursor:pointer; transition:all .25s; position:relative; overflow:hidden;
+        }
+        .hl-mes-btn::before {
+          content:''; position:absolute; top:0;left:0;right:0; height:2px;
+          background:linear-gradient(90deg,var(--accent-cyan,#00c8ff),transparent);
+          opacity:0; transition:opacity .25s;
+        }
+        .hl-mes-btn:hover { border-color:var(--accent-cyan,#00c8ff); transform:translateY(-2px); box-shadow:0 4px 20px rgba(0,200,255,.15); }
+        .hl-mes-btn:hover::before { opacity:1; }
+        .hl-mes-icon { font-size:28px; }
+        .hl-mes-nome { font-family:var(--display,'Rajdhani',sans-serif); font-size:18px; font-weight:700; color:var(--text-hi,#e8f4ff); letter-spacing:.08em; }
+        .hl-mes-ano { font-family:var(--mono,'Share Tech Mono',monospace); font-size:12px; color:var(--accent-cyan,#00c8ff); letter-spacing:.14em; }
+        .hl-mes-data { font-family:var(--sans,'Exo 2',sans-serif); font-size:10px; color:var(--text-lo,#3a5570); letter-spacing:.05em; }
+        .hl-back-btn {
+          display:inline-flex; align-items:center; gap:6px; padding:6px 14px;
+          background:transparent; border:1px solid var(--border-hi,#2a4060); border-radius:6px;
+          color:var(--text-mid,#7a9bbf); font-family:var(--display,'Rajdhani',sans-serif);
+          font-size:12px; font-weight:600; letter-spacing:.1em; cursor:pointer; transition:all .2s; margin-bottom:4px;
+        }
+        .hl-back-btn:hover { border-color:var(--accent-cyan,#00c8ff); color:var(--accent-cyan,#00c8ff); }
       `}</style>
+
+      {!mesSelecionado ? (
+        <div className="hl-wrap">
+          <div className="hl-greeting">
+            <div className="hl-tag">Holerite Digital</div>
+            <div className="hl-title">Seus <span>Holerites</span></div>
+            <div className="hl-subtitle">
+              Selecione o mês para visualizar seu holerite.
+            </div>
+          </div>
+          {getHoleritesDisponiveis().length === 0 ? (
+            <div className="hl-error">
+              <p>Nenhum holerite disponível ainda. O próximo será liberado no dia 8.</p>
+            </div>
+          ) : (
+            <div className="hl-meses-grid">
+              {getHoleritesDisponiveis().map(({ mes, ano }) => (
+                <button
+                  key={`${mes}-${ano}`}
+                  className="hl-mes-btn"
+                  onClick={() => selecionarMes(mes, ano)}
+                >
+                  <span className="hl-mes-icon">📄</span>
+                  <span className="hl-mes-nome">{MESES_PT[mes]}</span>
+                  <span className="hl-mes-ano">{ano}</span>
+                  <span className="hl-mes-data">
+                    Disponível desde {String(DIA_PAGAMENTO).padStart(2,"0")}/{String(mes).padStart(2,"0")}/{ano}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
 
       <div className="hl-wrap">
 
         {/* Saudação */}
         <div className="hl-greeting">
+          <button className="hl-back-btn" onClick={voltarParaSelecao}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            VOLTAR
+          </button>
           <div className="hl-tag">Holerite Digital</div>
           <div className="hl-title">Olá, <span>{primeiroNome}</span>!</div>
           <div className="hl-subtitle">
-            Esse é o seu holerite do dia <strong>{dataPgtoFmt}</strong>.{" "}
+            Holerite de <strong>{MESES_PT[mesCompetencia]} / {anoCompetencia}</strong>.{" "}
             Revise as informações no PDF e confirme o recebimento.
           </div>
           <div className="hl-status-row">
@@ -525,6 +626,8 @@ export default function Holerite({ userData = {} }) {
           </div>
         )}
       </div>
+
+      )}
 
       {/* Modal */}
       {showModal && (
