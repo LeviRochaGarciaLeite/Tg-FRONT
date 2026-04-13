@@ -137,7 +137,7 @@ export default function Holerite({ userData = {} }) {
     setTxt(cor.ciano);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
-    doc.text("NE\u2736US", mg, 16);
+    doc.text("NEXUS", mg, 16);
 
     setTxt(cor.cinzaCl);
     doc.setFont("helvetica", "normal");
