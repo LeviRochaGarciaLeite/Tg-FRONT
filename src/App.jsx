@@ -7,6 +7,7 @@ import { DailySummaryScreen } from "./components";
 import Holerite from "./Holerite";
 import MinhaEquipe from "./MinhaEquipe";
 import ResetPassword from './ResetPassword';
+import Sininho from "./Sininho";
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -120,16 +121,16 @@ function App() {
   const [gestaoCelular, setGestaoCelular] = useState("");
   const [gestaoPerfil, setGestaoPerfil] = useState("");
   const [screen, setScreen] = useState("intro");
-  // 1. Pega os parâmetros da URL (o que vem depois do ?)
-  const query = new URLSearchParams(window.location.search);
-  const token = query.get("token");
 
-  // 2. Se o token existir, a gente "fura a fila" e mostra o Reset
-  if (token) {
-    return <ResetPassword token={token} />;
+  const query = new URLSearchParams(window.location.search);
+  const resetToken = query.get("token");
+
+  if (resetToken) {
+    return <ResetPassword token={resetToken} />;
   }
 
   // Auth
+  const [token, setToken] = useState(localStorage.getItem("nexus_token") || "");
   const [isLogged, setIsLogged] = useState(false);
   const [userData, setUserData] = useState({
     nome: "",
@@ -159,6 +160,11 @@ function App() {
   // Resumo do dia
   const [showDailySummary, setShowDailySummary] = useState(false);
   const [summarySnapshot, setSummarySnapshot] = useState(null);
+
+  // Notificações
+  const [notificacoes, setNotificacoes] = useState([]);
+  const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
+  const [notificacoesLoading, setNotificacoesLoading] = useState(false);
 
   // Modal do próprio perfil
   const [showPerfilModal, setShowPerfilModal] = useState(false);
@@ -225,6 +231,47 @@ function App() {
     }
   }
 
+  // ── Notificações ─────────────────────────────────────────────────────────
+
+  const carregarNotificacoesNaoLidas = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/notificacoes/nao-lidas-count`, {
+        headers: getAuthHeader(),
+      });
+      setNotificacoesNaoLidas(data.count ?? data.nao_lidas ?? 0);
+    } catch (error) {
+      console.warn("Erro ao carregar contagem de notificações:", error);
+    }
+  }, []);
+
+  const carregarNotificacoes = useCallback(async () => {
+    setNotificacoesLoading(true);
+    try {
+      const { data } = await axios.get(`${API_BASE}/notificacoes`, {
+        headers: getAuthHeader(),
+      });
+      setNotificacoes(data.notificacoes ?? data ?? []);
+    } catch (error) {
+      console.warn("Erro ao carregar notificações:", error);
+    } finally {
+      setNotificacoesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLogged) return;
+
+    carregarNotificacoesNaoLidas();
+    carregarNotificacoes();
+
+    const interval = setInterval(() => {
+      carregarNotificacoesNaoLidas();
+      carregarNotificacoes();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isLogged, carregarNotificacoesNaoLidas, carregarNotificacoes]);
+
   // ── Toast ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -275,7 +322,6 @@ function App() {
 
   // ── Login ────────────────────────────────────────────────────────────────
 
-  // 1. PRIMEIRA FUNÇÃO: LOGIN
   async function handleLogin(e) {
     e.preventDefault();
     setLoginError("");
@@ -290,6 +336,7 @@ function App() {
       localStorage.setItem("nexus_token", data.token);
       localStorage.setItem("nexus_nome", data.nome);
       localStorage.setItem("nexus_perfil", data.perfil);
+      setToken(data.token);
 
       setUserData({
         nome: data.nome,
@@ -299,6 +346,10 @@ function App() {
       });
       setIsLogged(true);
       setScreen("inicio");
+
+      // Carrega notificações logo após o login
+      carregarNotificacoesNaoLidas();
+      carregarNotificacoes();
     } catch (error) {
       const msg =
         error?.response?.data?.erro ||
@@ -311,7 +362,6 @@ function App() {
     }
   }
 
-  // 2. SEGUNDA FUNÇÃO: ESQUECI A SENHA (Logo abaixo, do lado de fora)
   async function handleEsqueciSenha(e) {
     e.preventDefault();
     setForgotLoading(true);
@@ -326,7 +376,6 @@ function App() {
       setForgotLoading(false);
     }
   }
-
 
   // ── Logout com resumo do dia ─────────────────────────────────────────────
 
@@ -350,6 +399,7 @@ function App() {
     setSummarySnapshot(null);
 
     localStorage.clear();
+    setToken("");
     setIsLogged(false);
     setUserData({ nome: "", perfil: "", foto_perfil: "" });
     setCpf("");
@@ -362,6 +412,8 @@ function App() {
     setPauseLog([]);
     setNow(Date.now());
     setShowPerfilModal(false);
+    setNotificacoes([]);
+    setNotificacoesNaoLidas(0);
     setScreen("login");
   }
 
@@ -603,7 +655,6 @@ function App() {
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "24px" }}>
-          {/* Foto do Colaborador */}
           <div style={{ textAlign: "center" }}>
             {gestaoFoto ? (
               <img src={gestaoFoto} alt="Preview" style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }} />
@@ -616,25 +667,21 @@ function App() {
             <input type="file" accept="image/*" onChange={(e) => compressImage(e.target.files[0], setGestaoFoto)} style={{ color: "white" }} />
           </label>
 
-          {/* Nome */}
           <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
             Nome do Colaborador:
             <input type="text" value={gestaoNome} onChange={(e) => setGestaoNome(e.target.value)} style={{ width: "100%", padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px", fontFamily: "var(--sans)" }} />
           </label>
 
-          {/* Cidade */}
           <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
             Cidade:
             <input type="text" value={gestaoCidade} onChange={(e) => setGestaoCidade(e.target.value)} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px" }} />
           </label>
 
-          {/* Celular */}
           <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
             Celular:
             <input type="text" value={gestaoCelular} onChange={(e) => setGestaoCelular(e.target.value)} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px" }} />
           </label>
 
-          {/* Perfil de Acesso (Aqui entra a seleção do Supervisor!) */}
           <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
             Perfil de Acesso:
             <select value={gestaoPerfil} onChange={(e) => setGestaoPerfil(e.target.value)} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px" }}>
@@ -713,8 +760,6 @@ function App() {
               />
             </div>
 
-            {/* O campo de E-mail foi removido daqui! Aqui é só CPF e Senha. */}
-
             <div className="input-group">
               <input
                 type="password"
@@ -757,9 +802,8 @@ function App() {
               ESQUECI A SENHA
             </a>
           </div>
-        </div> {/* <--- FECHA O LOGIN-CARD */}
+        </div>
 
-        {/* 👇 O MODAL ENTRA AQUI DENTRO! 👇 */}
         {showForgotModal && (
           <div className="modal-overlay">
             <div className="modal-card">
@@ -788,8 +832,6 @@ function App() {
             </div>
           </div>
         )}
-
-
       </div>
     );
   }
@@ -806,7 +848,28 @@ function App() {
         <button className={abaAtiva === "holerite" ? "active" : ""} onClick={() => { setAbaAtiva("holerite"); if (screen !== "app") setScreen("app"); }}>HOLERITE</button>
         <button className={abaAtiva === "equipe" ? "active" : ""} onClick={() => { setAbaAtiva("equipe"); if (screen !== "app") setScreen("app"); }}>MINHA EQUIPE</button>
         <button disabled title="Em breve">RANKING</button>
-        {isManager && <button className={abaAtiva === "gestao" ? "active" : ""} onClick={() => { setAbaAtiva("gestao"); if (screen !== "app") setScreen("app"); }}>GESTÃO</button>}
+
+        {/* ── Sininho com notificações ── */}
+        <Sininho
+          token={token}
+          count={notificacoesNaoLidas}
+          notifications={notificacoes}
+          loading={notificacoesLoading}
+          onRefresh={carregarNotificacoes}
+          onNavegar={(aba) => {
+            setAbaAtiva(aba);
+            setScreen("app");
+          }}
+        />
+
+        {isManager && (
+          <button
+            className={abaAtiva === "gestao" ? "active" : ""}
+            onClick={() => { setAbaAtiva("gestao"); if (screen !== "app") setScreen("app"); }}
+          >
+            GESTÃO
+          </button>
+        )}
       </nav>
 
       <div
@@ -844,7 +907,6 @@ function App() {
           )}
           <section className="hero-card">
             <img src={LogoNexus} alt="Nexus" className="hero-card__logo" />
-
             <button
               className="hero-card__button"
               onClick={() => setScreen("app")}
@@ -1051,124 +1113,48 @@ function App() {
                 >
                   <thead style={{ background: "var(--bg-card2)" }}>
                     <tr>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid var(--border)",
-                        }}
-                      >
-                        FOTO
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid var(--border)",
-                        }}
-                      >
-                        NOME
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid var(--border)",
-                        }}
-                      >
-                        CPF
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          borderBottom: "1px solid var(--border)",
-                          textAlign: "right",
-                        }}
-                      >
-                        AÇÕES
-                      </th>
+                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>FOTO</th>
+                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>NOME</th>
+                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>CPF</th>
+                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", textAlign: "right" }}>AÇÕES</th>
                     </tr>
                   </thead>
                   <tbody>
                     {equipe.map((colab) => (
-                      <tr
-                        key={colab.id}
-                        style={{ borderBottom: "1px solid var(--border)" }}
-                      >
+                      <tr key={colab.id} style={{ borderBottom: "1px solid var(--border)" }}>
                         <td style={{ padding: "12px 16px" }}>
                           {colab.foto_perfil ? (
                             <img
                               src={colab.foto_perfil}
                               alt={colab.nome}
-                              style={{
-                                width: "38px",
-                                height: "38px",
-                                borderRadius: "50%",
-                                objectFit: "cover",
-                              }}
+                              style={{ width: "38px", height: "38px", borderRadius: "50%", objectFit: "cover" }}
                             />
                           ) : (
                             <div
-                              style={{
-                                width: "38px",
-                                height: "38px",
-                                borderRadius: "50%",
-                                background:
-                                  "linear-gradient(135deg, #1e2d42, #111927)",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                color: "white",
-                                fontWeight: "bold",
-                              }}
+                              style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #1e2d42, #111927)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}
                             >
                               👤
                             </div>
                           )}
                         </td>
 
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            color: "var(--text-hi)",
-                            fontFamily: "var(--sans)",
-                            fontSize: "14px",
-                          }}
-                        >
+                        <td style={{ padding: "12px 16px", color: "var(--text-hi)", fontFamily: "var(--sans)", fontSize: "14px" }}>
                           {colab.nome}
                           {colab.perfil === "gestor" && (
-                            <span
-                              style={{
-                                fontSize: "10px",
-                                background: "var(--accent-cyan)",
-                                color: "black",
-                                padding: "2px 6px",
-                                borderRadius: "10px",
-                                marginLeft: "8px",
-                                fontWeight: "bold",
-                              }}
-                            >
+                            <span style={{ fontSize: "10px", background: "var(--accent-cyan)", color: "black", padding: "2px 6px", borderRadius: "10px", marginLeft: "8px", fontWeight: "bold" }}>
                               GESTOR
                             </span>
                           )}
                         </td>
 
-                        <td
-                          style={{
-                            padding: "12px 16px",
-                            color: "var(--text-mid)",
-                            fontFamily: "var(--mono)",
-                            fontSize: "13px",
-                          }}
-                        >
+                        <td style={{ padding: "12px 16px", color: "var(--text-mid)", fontFamily: "var(--mono)", fontSize: "13px" }}>
                           {formatCpf(colab.cpf)}
                         </td>
 
                         <td style={{ padding: "12px 16px", textAlign: "right" }}>
                           <button
                             className="btn btn-cancel"
-                            style={{
-                              padding: "6px 14px",
-                              fontSize: "11px",
-                              letterSpacing: "1px",
-                            }}
+                            style={{ padding: "6px 14px", fontSize: "11px", letterSpacing: "1px" }}
                             onClick={() => {
                               setGestaoNome(colab.nome);
                               setGestaoFoto(colab.foto_perfil || "");
@@ -1203,15 +1189,8 @@ function App() {
               Tem certeza que deseja registrar sua saída?
             </p>
             <div className="modal-actions">
-              <button
-                className="btn btn-cancel"
-                onClick={() => setConfirmExit(false)}
-              >
-                Cancelar
-              </button>
-              <button className="btn btn-exit" onClick={confirmHandleExit}>
-                Confirmar Saída
-              </button>
+              <button className="btn btn-cancel" onClick={() => setConfirmExit(false)}>Cancelar</button>
+              <button className="btn btn-exit" onClick={confirmHandleExit}>Confirmar Saída</button>
             </div>
           </div>
         </div>
@@ -1222,7 +1201,5 @@ function App() {
     </div>
   );
 }
-
-
 
 export default App;
