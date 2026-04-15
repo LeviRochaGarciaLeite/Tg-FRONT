@@ -6,8 +6,9 @@ import Cadastro from "./cadastro";
 import { DailySummaryScreen } from "./components";
 import Holerite from "./Holerite";
 import MinhaEquipe from "./MinhaEquipe";
-import ResetPassword from './ResetPassword';
+import ResetPassword from "./ResetPassword";
 import Sininho from "./Sininho";
+import MeuPerfil from "./MeuPerfil";
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -111,7 +112,6 @@ const STATUS_MAP = {
 // ─── Componente principal ───────────────────────────────────────────────────
 
 function App() {
-
   // Telas: intro | login | cadastro | inicio | app
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -136,6 +136,10 @@ function App() {
     nome: "",
     perfil: "",
     foto_perfil: "",
+    email: "",
+    cidade: "",
+    celular: "",
+    data_nascimento: "",
   });
   const [cpf, setCpf] = useState("");
   const [senha, setSenha] = useState("");
@@ -168,6 +172,8 @@ function App() {
 
   // Modal do próprio perfil
   const [showPerfilModal, setShowPerfilModal] = useState(false);
+  const [showMeuPerfil, setShowMeuPerfil] = useState(false);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [editNome, setEditNome] = useState("");
   const [editFoto, setEditFoto] = useState("");
   const [editCidade, setEditCidade] = useState("");
@@ -276,10 +282,7 @@ function App() {
 
   useEffect(() => {
     if (!toast.msg) return;
-    const timer = setTimeout(
-      () => setToast({ msg: "", type: "info" }),
-      3500
-    );
+    const timer = setTimeout(() => setToast({ msg: "", type: "info" }), 3500);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -300,8 +303,8 @@ function App() {
     startTime && (status === "working" || status === "paused")
       ? Math.floor((now - startTime) / 1000)
       : startTime && endTime
-        ? Math.floor((endTime - startTime) / 1000)
-        : 0;
+      ? Math.floor((endTime - startTime) / 1000)
+      : 0;
 
   const workedSec = Math.max(0, connectedSec - totalPauseSec);
 
@@ -343,6 +346,9 @@ function App() {
         perfil: data.perfil,
         email: data.email,
         foto_perfil: data.foto_perfil || "",
+        cidade: data.cidade || "",
+        celular: data.celular || "",
+        data_nascimento: data.data_nascimento || "",
       });
       setIsLogged(true);
       setScreen("inicio");
@@ -366,12 +372,17 @@ function App() {
     e.preventDefault();
     setForgotLoading(true);
     try {
-      const response = await axios.post(`${API_BASE}/auth/esqueci-senha`, { email: forgotEmail });
+      const response = await axios.post(`${API_BASE}/auth/esqueci-senha`, {
+        email: forgotEmail,
+      });
       showToast(response.data.mensagem, "success");
       setShowForgotModal(false);
       setForgotEmail("");
     } catch (err) {
-      showToast(err.response?.data?.erro || "Erro ao solicitar recuperação", "error");
+      showToast(
+        err.response?.data?.erro || "Erro ao solicitar recuperação",
+        "error"
+      );
     } finally {
       setForgotLoading(false);
     }
@@ -401,7 +412,15 @@ function App() {
     localStorage.clear();
     setToken("");
     setIsLogged(false);
-    setUserData({ nome: "", perfil: "", foto_perfil: "" });
+    setUserData({
+      nome: "",
+      perfil: "",
+      foto_perfil: "",
+      email: "",
+      cidade: "",
+      celular: "",
+      data_nascimento: "",
+    });
     setCpf("");
     setSenha("");
     setLoginError("");
@@ -429,7 +448,7 @@ function App() {
           foto_perfil: editFoto,
           cidade: editCidade,
           celular: editCelular,
-          data_nascimento: editDataNascimento
+          data_nascimento: editDataNascimento,
         },
         { headers: getAuthHeader() }
       );
@@ -440,7 +459,7 @@ function App() {
         foto_perfil: data.foto_perfil,
         cidade: data.cidade,
         celular: data.celular,
-        data_nascimento: data.data_nascimento
+        data_nascimento: data.data_nascimento,
       }));
       localStorage.setItem("nexus_nome", data.nome);
       setShowPerfilModal(false);
@@ -466,7 +485,7 @@ function App() {
           foto_perfil: gestaoFoto,
           cidade: gestaoCidade,
           celular: gestaoCelular,
-          perfil: gestaoPerfil
+          perfil: gestaoPerfil,
         },
         { headers: getAuthHeader() }
       );
@@ -574,11 +593,11 @@ function App() {
 
   const userInitials = userData.nome
     ? userData.nome
-      .split(" ")
-      .slice(0, 2)
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
+        .split(" ")
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
     : "?";
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -591,55 +610,216 @@ function App() {
         <h3 className="modal-title">Meu Perfil</h3>
 
         {isSupervisor && (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,204,0,0.12)", border: "1px solid rgba(255,204,0,0.35)", borderRadius: 6, padding: "4px 12px", marginBottom: 8, alignSelf: "flex-start" }}>
-            <span style={{ fontSize: 11, color: "var(--accent-gold)", fontFamily: "var(--display)", letterSpacing: 1, fontWeight: 700 }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(255,204,0,0.12)",
+              border: "1px solid rgba(255,204,0,0.35)",
+              borderRadius: 6,
+              padding: "4px 12px",
+              marginBottom: 8,
+              alignSelf: "flex-start",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--accent-gold)",
+                fontFamily: "var(--display)",
+                letterSpacing: 1,
+                fontWeight: 700,
+              }}
+            >
               ★ SUPERVISOR
             </span>
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "24px" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "15px",
+            marginBottom: "24px",
+          }}
+        >
           <div style={{ textAlign: "center" }}>
             {editFoto ? (
-              <img src={editFoto} alt="Preview" style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }} />
+              <img
+                src={editFoto}
+                alt="Preview"
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
             ) : (
-              <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "#1e2d42", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>📷</div>
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  background: "#1e2d42",
+                  margin: "0 auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px",
+                }}
+              >
+                📷
+              </div>
             )}
           </div>
 
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Foto de Perfil:
-            <input type="file" accept="image/*" onChange={(e) => compressImage(e.target.files[0], setEditFoto)} style={{ color: "white" }} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => compressImage(e.target.files[0], setEditFoto)}
+              style={{ color: "white" }}
+            />
           </label>
 
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Nome:
-            <input type="text" value={editNome} onChange={(e) => setEditNome(e.target.value)} placeholder="Seu Nome" style={{ width: "100%", padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px", fontFamily: "var(--sans)" }} />
+            <input
+              type="text"
+              value={editNome}
+              onChange={(e) => setEditNome(e.target.value)}
+              placeholder="Seu Nome"
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+                fontFamily: "var(--sans)",
+              }}
+            />
           </label>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <label
+              style={{
+                fontSize: "12px",
+                color: "var(--text-mid)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                flex: 1,
+              }}
+            >
               Cidade:
-              <input type="text" value={editCidade} onChange={(e) => setEditCidade(e.target.value)} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px", fontFamily: "var(--sans)" }} />
+              <input
+                type="text"
+                value={editCidade}
+                onChange={(e) => setEditCidade(e.target.value)}
+                style={{
+                  padding: "10px",
+                  background: "#111418",
+                  color: "white",
+                  border: "1px solid #4b5563",
+                  borderRadius: "8px",
+                  fontFamily: "var(--sans)",
+                }}
+              />
             </label>
 
-            <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+            <label
+              style={{
+                fontSize: "12px",
+                color: "var(--text-mid)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                flex: 1,
+              }}
+            >
               Celular:
-              <input type="text" value={editCelular} onChange={(e) => setEditCelular(formatCelular(e.target.value))} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px", fontFamily: "var(--sans)" }} />
+              <input
+                type="text"
+                value={editCelular}
+                onChange={(e) => setEditCelular(formatCelular(e.target.value))}
+                style={{
+                  padding: "10px",
+                  background: "#111418",
+                  color: "white",
+                  border: "1px solid #4b5563",
+                  borderRadius: "8px",
+                  fontFamily: "var(--sans)",
+                }}
+              />
             </label>
           </div>
 
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Data de Nascimento:
-            <input type="date" value={editDataNascimento} onChange={(e) => setEditDataNascimento(e.target.value)} style={{ width: "100%", padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px", fontFamily: "var(--sans)" }} />
+            <input
+              type="date"
+              value={editDataNascimento}
+              onChange={(e) => setEditDataNascimento(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+                fontFamily: "var(--sans)",
+              }}
+            />
           </label>
         </div>
 
         <div className="modal-actions" style={{ justifyContent: "space-between" }}>
-          <button className="btn btn-exit" onClick={handleLogout}>Sair da Conta</button>
+          <button className="btn btn-exit" onClick={handleLogout}>
+            Sair da Conta
+          </button>
           <div style={{ display: "flex", gap: "10px" }}>
-            <button className="btn btn-cancel" onClick={() => setShowPerfilModal(false)}>Cancelar</button>
-            <button className="btn btn-start" onClick={salvarPerfil} disabled={salvandoPerfil}>{salvandoPerfil ? "Salvando..." : "Salvar"}</button>
+            <button
+              className="btn btn-cancel"
+              onClick={() => setShowPerfilModal(false)}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-start"
+              onClick={salvarPerfil}
+              disabled={salvandoPerfil}
+            >
+              {salvandoPerfil ? "Salvando..." : "Salvar"}
+            </button>
           </div>
         </div>
       </div>
@@ -654,37 +834,158 @@ function App() {
           {gestaoModal.colab?.cpf}
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "24px" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "15px",
+            marginBottom: "24px",
+          }}
+        >
           <div style={{ textAlign: "center" }}>
             {gestaoFoto ? (
-              <img src={gestaoFoto} alt="Preview" style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }} />
+              <img
+                src={gestaoFoto}
+                alt="Preview"
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                }}
+              />
             ) : (
-              <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "#1e2d42", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>👤</div>
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  background: "#1e2d42",
+                  margin: "0 auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "24px",
+                }}
+              >
+                👤
+              </div>
             )}
           </div>
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Nova Foto:
-            <input type="file" accept="image/*" onChange={(e) => compressImage(e.target.files[0], setGestaoFoto)} style={{ color: "white" }} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => compressImage(e.target.files[0], setGestaoFoto)}
+              style={{ color: "white" }}
+            />
           </label>
 
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Nome do Colaborador:
-            <input type="text" value={gestaoNome} onChange={(e) => setGestaoNome(e.target.value)} style={{ width: "100%", padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px", fontFamily: "var(--sans)" }} />
+            <input
+              type="text"
+              value={gestaoNome}
+              onChange={(e) => setGestaoNome(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+                fontFamily: "var(--sans)",
+              }}
+            />
           </label>
 
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Cidade:
-            <input type="text" value={gestaoCidade} onChange={(e) => setGestaoCidade(e.target.value)} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px" }} />
+            <input
+              type="text"
+              value={gestaoCidade}
+              onChange={(e) => setGestaoCidade(e.target.value)}
+              style={{
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+              }}
+            />
           </label>
 
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Celular:
-            <input type="text" value={gestaoCelular} onChange={(e) => setGestaoCelular(e.target.value)} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px" }} />
+            <input
+              type="text"
+              value={gestaoCelular}
+              onChange={(e) => setGestaoCelular(e.target.value)}
+              style={{
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+              }}
+            />
           </label>
 
-          <label style={{ fontSize: "12px", color: "var(--text-mid)", display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label
+            style={{
+              fontSize: "12px",
+              color: "var(--text-mid)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
             Perfil de Acesso:
-            <select value={gestaoPerfil} onChange={(e) => setGestaoPerfil(e.target.value)} style={{ padding: "10px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "8px" }}>
+            <select
+              value={gestaoPerfil}
+              onChange={(e) => setGestaoPerfil(e.target.value)}
+              style={{
+                padding: "10px",
+                background: "#111418",
+                color: "white",
+                border: "1px solid #4b5563",
+                borderRadius: "8px",
+              }}
+            >
               <option value="colaborador">Colaborador</option>
               <option value="supervisor">Supervisor</option>
               <option value="gestor">Gestor</option>
@@ -693,8 +994,17 @@ function App() {
         </div>
 
         <div className="modal-actions">
-          <button className="btn btn-cancel" onClick={() => setGestaoModal({ show: false, colab: null })}>Cancelar</button>
-          <button className="btn btn-start" onClick={salvarEdicaoGestor} disabled={salvandoGestao}>
+          <button
+            className="btn btn-cancel"
+            onClick={() => setGestaoModal({ show: false, colab: null })}
+          >
+            Cancelar
+          </button>
+          <button
+            className="btn btn-start"
+            onClick={salvarEdicaoGestor}
+            disabled={salvandoGestao}
+          >
             {salvandoGestao ? "Salvando..." : "Salvar"}
           </button>
         </div>
@@ -778,11 +1088,7 @@ function App() {
               </div>
             )}
 
-            <button
-              type="submit"
-              className="login-button"
-              disabled={loginLoading}
-            >
+            <button type="submit" className="login-button" disabled={loginLoading}>
               {loginLoading ? (
                 <span className="btn-loading">
                   <span className="spinner" />
@@ -795,10 +1101,22 @@ function App() {
           </form>
 
           <div className="login-footer">
-            <a href="#" onClick={(e) => { e.preventDefault(); setScreen("cadastro"); }}>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setScreen("cadastro");
+              }}
+            >
               CRIAR CONTA
             </a>
-            <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowForgotModal(true);
+              }}
+            >
               ESQUECI A SENHA
             </a>
           </div>
@@ -808,23 +1126,43 @@ function App() {
           <div className="modal-overlay">
             <div className="modal-card">
               <h3 className="modal-title">Recuperar Senha</h3>
-              <p className="modal-body">Digite o e-mail cadastrado na sua conta para receber o link de recuperação.</p>
+              <p className="modal-body">
+                Digite o e-mail cadastrado na sua conta para receber o link de
+                recuperação.
+              </p>
 
               <form onSubmit={handleEsqueciSenha}>
-                <div className="input-group" style={{ marginBottom: '20px' }}>
+                <div className="input-group" style={{ marginBottom: "20px" }}>
                   <input
                     type="email"
                     placeholder="Seu E-mail"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     required
-                    style={{ width: "100%", padding: "12px", background: "#111418", color: "white", border: "1px solid #4b5563", borderRadius: "2rem" }}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      background: "#111418",
+                      color: "white",
+                      border: "1px solid #4b5563",
+                      borderRadius: "2rem",
+                    }}
                   />
                 </div>
 
                 <div className="modal-actions">
-                  <button type="button" className="btn btn-cancel" onClick={() => setShowForgotModal(false)}>Cancelar</button>
-                  <button type="submit" className="btn btn-start" disabled={forgotLoading}>
+                  <button
+                    type="button"
+                    className="btn btn-cancel"
+                    onClick={() => setShowForgotModal(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-start"
+                    disabled={forgotLoading}
+                  >
                     {forgotLoading ? "Enviando..." : "Enviar Link"}
                   </button>
                 </div>
@@ -843,13 +1181,40 @@ function App() {
       </div>
 
       <nav className="topbar__nav" aria-label="Menu principal">
-        <button className={abaAtiva === "ponto" && screen === "app" ? "active" : ""} onClick={() => { setAbaAtiva("ponto"); if (screen !== "app") setScreen("app"); }}>MEU RELÓGIO</button>
-        <button disabled title="Em breve">HISTÓRICO</button>
-        <button className={abaAtiva === "holerite" ? "active" : ""} onClick={() => { setAbaAtiva("holerite"); if (screen !== "app") setScreen("app"); }}>HOLERITE</button>
-        <button className={abaAtiva === "equipe" ? "active" : ""} onClick={() => { setAbaAtiva("equipe"); if (screen !== "app") setScreen("app"); }}>MINHA EQUIPE</button>
-        <button disabled title="Em breve">RANKING</button>
+        <button
+          className={abaAtiva === "ponto" && screen === "app" ? "active" : ""}
+          onClick={() => {
+            setAbaAtiva("ponto");
+            if (screen !== "app") setScreen("app");
+          }}
+        >
+          MEU RELÓGIO
+        </button>
+        <button disabled title="Em breve">
+          HISTÓRICO
+        </button>
+        <button
+          className={abaAtiva === "holerite" ? "active" : ""}
+          onClick={() => {
+            setAbaAtiva("holerite");
+            if (screen !== "app") setScreen("app");
+          }}
+        >
+          HOLERITE
+        </button>
+        <button
+          className={abaAtiva === "equipe" ? "active" : ""}
+          onClick={() => {
+            setAbaAtiva("equipe");
+            if (screen !== "app") setScreen("app");
+          }}
+        >
+          MINHA EQUIPE
+        </button>
+        <button disabled title="Em breve">
+          RANKING
+        </button>
 
-        {/* ── Sininho com notificações ── */}
         <Sininho
           token={token}
           count={notificacoesNaoLidas}
@@ -865,31 +1230,134 @@ function App() {
         {isManager && (
           <button
             className={abaAtiva === "gestao" ? "active" : ""}
-            onClick={() => { setAbaAtiva("gestao"); if (screen !== "app") setScreen("app"); }}
+            onClick={() => {
+              setAbaAtiva("gestao");
+              if (screen !== "app") setScreen("app");
+            }}
           >
             GESTÃO
           </button>
         )}
       </nav>
 
-      <div
-        className="topbar__user"
-        onClick={() => {
-          setEditNome(userData.nome || "");
-          setEditFoto(userData.foto_perfil || "");
-          setEditCidade(userData.cidade || "");
-          setEditCelular(userData.celular || "");
-          setEditDataNascimento(userData.data_nascimento || "");
-          setShowPerfilModal(true);
-        }}
-        title="Editar Perfil"
-        role="button"
-        tabIndex={0}
-      >
-        {userData.foto_perfil ? (
-          <img src={userData.foto_perfil} alt="Perfil" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
-        ) : (
-          <span className="topbar__user-initials">{userInitials}</span>
+      <div style={{ position: "relative", justifySelf: "end" }}>
+        <div
+          className="topbar__user"
+          onClick={() => setShowAvatarMenu((v) => !v)}
+          title="Perfil"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && setShowAvatarMenu((v) => !v)}
+        >
+          {userData.foto_perfil ? (
+            <img
+              src={userData.foto_perfil}
+              alt="Perfil"
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <span className="topbar__user-initials">{userInitials}</span>
+          )}
+        </div>
+
+        {showAvatarMenu && (
+          <>
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 998 }}
+              onClick={() => setShowAvatarMenu(false)}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 10px)",
+                right: 0,
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-hi)",
+                borderRadius: 10,
+                minWidth: 170,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                zIndex: 999,
+                overflow: "hidden",
+                animation: "fadeIn 0.12s ease",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setShowAvatarMenu(false);
+                  setShowMeuPerfil(true);
+                }}
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: "1px solid var(--border)",
+                  color: "var(--text-hi)",
+                  fontFamily: "var(--display)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  padding: "13px 18px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(0,200,255,0.07)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <span style={{ fontSize: 14 }}>👤</span>
+                MEU PERFIL
+              </button>
+              <button
+                onClick={() => {
+                  setShowAvatarMenu(false);
+                  setEditNome(userData.nome || "");
+                  setEditFoto(userData.foto_perfil || "");
+                  setEditCidade(userData.cidade || "");
+                  setEditCelular(userData.celular || "");
+                  setEditDataNascimento(userData.data_nascimento || "");
+                  setShowPerfilModal(true);
+                }}
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-mid)",
+                  fontFamily: "var(--display)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  padding: "13px 18px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(255,255,255,0.04)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                <span style={{ fontSize: 14 }}>✏️</span>
+                EDITAR PERFIL
+              </button>
+            </div>
+          </>
         )}
       </div>
     </header>
@@ -907,15 +1375,16 @@ function App() {
           )}
           <section className="hero-card">
             <img src={LogoNexus} alt="Nexus" className="hero-card__logo" />
-            <button
-              className="hero-card__button"
-              onClick={() => setScreen("app")}
-            >
+            <button className="hero-card__button" onClick={() => setScreen("app")}>
               INICIAR JORNADA
             </button>
           </section>
         </main>
+
         {showPerfilModal && PerfilModal()}
+        {showMeuPerfil && (
+          <MeuPerfil userData={userData} onClose={() => setShowMeuPerfil(false)} />
+        )}
       </div>
     );
   }
@@ -934,6 +1403,7 @@ function App() {
                 <span>{currentStatus.label}</span>
               </div>
             </div>
+
             <div className="grid">
               <div className="info-col">
                 <div className="info-block">
@@ -1029,9 +1499,7 @@ function App() {
               <button
                 className="btn btn-pause"
                 onClick={handlePause}
-                disabled={
-                  status === "idle" || status === "done" || actionLoading
-                }
+                disabled={status === "idle" || status === "done" || actionLoading}
               >
                 {status === "paused" ? "Retomar" : "Pausar"}
               </button>
@@ -1039,9 +1507,7 @@ function App() {
               <button
                 className="btn btn-exit"
                 onClick={handleExit}
-                disabled={
-                  status === "idle" || status === "done" || actionLoading
-                }
+                disabled={status === "idle" || status === "done" || actionLoading}
               >
                 Saída
               </button>
@@ -1113,48 +1579,124 @@ function App() {
                 >
                   <thead style={{ background: "var(--bg-card2)" }}>
                     <tr>
-                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>FOTO</th>
-                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>NOME</th>
-                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>CPF</th>
-                      <th style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", textAlign: "right" }}>AÇÕES</th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        FOTO
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        NOME
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                        }}
+                      >
+                        CPF
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                          textAlign: "right",
+                        }}
+                      >
+                        AÇÕES
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {equipe.map((colab) => (
-                      <tr key={colab.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <tr
+                        key={colab.id}
+                        style={{ borderBottom: "1px solid var(--border)" }}
+                      >
                         <td style={{ padding: "12px 16px" }}>
                           {colab.foto_perfil ? (
                             <img
                               src={colab.foto_perfil}
                               alt={colab.nome}
-                              style={{ width: "38px", height: "38px", borderRadius: "50%", objectFit: "cover" }}
+                              style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                              }}
                             />
                           ) : (
                             <div
-                              style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #1e2d42, #111927)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}
+                              style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "50%",
+                                background:
+                                  "linear-gradient(135deg, #1e2d42, #111927)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "white",
+                                fontWeight: "bold",
+                              }}
                             >
                               👤
                             </div>
                           )}
                         </td>
 
-                        <td style={{ padding: "12px 16px", color: "var(--text-hi)", fontFamily: "var(--sans)", fontSize: "14px" }}>
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "var(--text-hi)",
+                            fontFamily: "var(--sans)",
+                            fontSize: "14px",
+                          }}
+                        >
                           {colab.nome}
                           {colab.perfil === "gestor" && (
-                            <span style={{ fontSize: "10px", background: "var(--accent-cyan)", color: "black", padding: "2px 6px", borderRadius: "10px", marginLeft: "8px", fontWeight: "bold" }}>
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                background: "var(--accent-cyan)",
+                                color: "black",
+                                padding: "2px 6px",
+                                borderRadius: "10px",
+                                marginLeft: "8px",
+                                fontWeight: "bold",
+                              }}
+                            >
                               GESTOR
                             </span>
                           )}
                         </td>
 
-                        <td style={{ padding: "12px 16px", color: "var(--text-mid)", fontFamily: "var(--mono)", fontSize: "13px" }}>
+                        <td
+                          style={{
+                            padding: "12px 16px",
+                            color: "var(--text-mid)",
+                            fontFamily: "var(--mono)",
+                            fontSize: "13px",
+                          }}
+                        >
                           {formatCpf(colab.cpf)}
                         </td>
 
                         <td style={{ padding: "12px 16px", textAlign: "right" }}>
                           <button
                             className="btn btn-cancel"
-                            style={{ padding: "6px 14px", fontSize: "11px", letterSpacing: "1px" }}
+                            style={{
+                              padding: "6px 14px",
+                              fontSize: "11px",
+                              letterSpacing: "1px",
+                            }}
                             onClick={() => {
                               setGestaoNome(colab.nome);
                               setGestaoFoto(colab.foto_perfil || "");
@@ -1177,7 +1719,10 @@ function App() {
         )}
       </main>
 
-      <div className={`toast toast--${toast.type} ${toast.msg ? "show" : ""}`} role="status">
+      <div
+        className={`toast toast--${toast.type} ${toast.msg ? "show" : ""}`}
+        role="status"
+      >
         {toast.msg}
       </div>
 
@@ -1189,8 +1734,15 @@ function App() {
               Tem certeza que deseja registrar sua saída?
             </p>
             <div className="modal-actions">
-              <button className="btn btn-cancel" onClick={() => setConfirmExit(false)}>Cancelar</button>
-              <button className="btn btn-exit" onClick={confirmHandleExit}>Confirmar Saída</button>
+              <button
+                className="btn btn-cancel"
+                onClick={() => setConfirmExit(false)}
+              >
+                Cancelar
+              </button>
+              <button className="btn btn-exit" onClick={confirmHandleExit}>
+                Confirmar Saída
+              </button>
             </div>
           </div>
         </div>
@@ -1198,6 +1750,9 @@ function App() {
 
       {showPerfilModal && PerfilModal()}
       {gestaoModal.show && ModalEdicaoGestor()}
+      {showMeuPerfil && (
+        <MeuPerfil userData={userData} onClose={() => setShowMeuPerfil(false)} />
+      )}
     </div>
   );
 }
