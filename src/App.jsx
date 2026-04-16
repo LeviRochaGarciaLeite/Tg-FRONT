@@ -270,10 +270,11 @@ function App() {
     carregarNotificacoesNaoLidas();
     carregarNotificacoes();
 
+    // Polling de backup a cada 15s (SSE já garante tempo real)
     const interval = setInterval(() => {
       carregarNotificacoesNaoLidas();
       carregarNotificacoes();
-    }, 30000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [isLogged, carregarNotificacoesNaoLidas, carregarNotificacoes]);
