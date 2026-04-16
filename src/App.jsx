@@ -9,7 +9,7 @@ import MinhaEquipe from "./MinhaEquipe";
 import ResetPassword from "./ResetPassword";
 import Sininho from "./Sininho";
 import MeuPerfil from "./MeuPerfil";
-
+import Ranking from "./Ranking";
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
 const API_BASE = "http://127.0.0.1:5000/api";
@@ -1212,8 +1212,11 @@ function App() {
         >
           MINHA EQUIPE
         </button>
-        <button disabled title="Em breve">
-          RANKING
+        <button
+          className={abaAtiva === "ranking" ? "active" : ""}
+          onClick={() => setAbaAtiva("ranking")}
+        >
+           RANKING
         </button>
 
         <Sininho
@@ -1518,6 +1521,8 @@ function App() {
           <Holerite userData={userData} />
         ) : abaAtiva === "equipe" ? (
           <MinhaEquipe userData={userData} />
+        ) : abaAtiva === "ranking" ? (
+          <Ranking />
         ) : (
           <div
             className="panel panel--gestao"
