@@ -1,5 +1,9 @@
 /**
  * Sininho.jsx — Notificações em tempo real via SSE + polling de backup
+ *
+ * CORREÇÃO: o estado local (localNotifs / localCount) é a fonte da verdade.
+ * A prop `notifications` só inicializa o estado uma vez, e nunca sobrescreve
+ * após o usuário interagir — evita o bug de "sumir notificações ao abrir".
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -141,7 +145,7 @@ function useSSENotifications({ isLogged, onNewNotification }) {
     };
   }, [isLogged, connect]);
 
-  return { sseConnected, reconnect: connect };
+  return { sseConnected };
 }
 
 /* ── Componente principal ──────────────────────────────────────────────── */
@@ -152,15 +156,49 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
   const [localCount, setLocalCount] = useState(count);
   const [refreshing, setRefreshing] = useState(false);
   const wrapperRef = useRef(null);
-  const prevCount = useRef(count);
+  const prevCountRef = useRef(count);
+  // Controla se já inicializamos com dados reais do servidor
+  const initializedRef = useRef(notifications.length > 0);
   const isLogged = !!token;
 
   injectKeyframes();
 
-  useEffect(() => { setLocalNotifs(notifications); }, [notifications]);
-  useEffect(() => { setLocalCount(count); }, [count]);
+  // ── Sincronização com props externas ──────────────────────────────────
+  // REGRA: o estado local é dono dos dados após a primeira inicialização.
+  // A prop `notifications` só é aceita se:
+  //   1) Ainda não inicializamos (primeira carga)
+  //   2) O servidor trouxe mais notificações do que temos localmente
+  //      (ex: outra aba aberta, polling de backup encontrou algo novo)
+  useEffect(() => {
+    if (!initializedRef.current && notifications.length > 0) {
+      // Primeira carga com dados reais
+      initializedRef.current = true;
+      setLocalNotifs(notifications);
+      setLocalCount(count);
+    } else if (initializedRef.current && notifications.length > localNotifs.length) {
+      // Servidor trouxe notificações a mais — merge sem perder as locais
+      setLocalNotifs((prev) => {
+        const idsLocais = new Set(prev.map((n) => n.id));
+        const novas = notifications.filter((n) => !idsLocais.has(n.id));
+        return novas.length > 0 ? [...novas, ...prev] : prev;
+      });
+    }
+    // Em nenhum caso reduzimos a lista com base na prop — isso é feito só localmente
+  }, [notifications, count]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Count: só sobe via prop, nunca derruba (o sino controla a queda localmente)
+  useEffect(() => {
+    if (count > prevCountRef.current) {
+      setLocalCount(count);
+      setShaking(true);
+      setTimeout(() => setShaking(false), 800);
+    }
+    prevCountRef.current = count;
+  }, [count]);
+
+  // ── SSE: nova notificação em tempo real ───────────────────────────────
   const handleNewNotification = useCallback((notif) => {
+    initializedRef.current = true;
     setLocalNotifs((prev) => {
       if (prev.some((n) => n.id === notif.id)) return prev;
       return [notif, ...prev];
@@ -172,14 +210,7 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
 
   const { sseConnected } = useSSENotifications({ isLogged, onNewNotification: handleNewNotification });
 
-  useEffect(() => {
-    if (count > prevCount.current) {
-      setShaking(true);
-      setTimeout(() => setShaking(false), 800);
-    }
-    prevCount.current = count;
-  }, [count]);
-
+  // ── Fecha ao clicar fora ───────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     function handleClickOutside(e) {
@@ -189,57 +220,63 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  // Abre IMEDIATAMENTE — marca lidas em background
+  // ── Abre IMEDIATAMENTE — marca lidas em background ────────────────────
   function handleOpen() {
     const wasOpen = open;
-    setOpen((v) => !v); // síncrono, sem await
+    setOpen((v) => !v); // síncrono, sem await — abre na hora
 
     if (!wasOpen && localCount > 0) {
-      axios.put(`${API_BASE}/notificacoes/marcar-todas-lidas`, {}, { headers: getAuthHeader() })
-        .then(() => {
-          setLocalNotifs((prev) => prev.map((n) => ({ ...n, lida: true })));
-          setLocalCount(0);
-          onRefresh?.();
-        })
+      // Marca localmente de imediato
+      setLocalNotifs((prev) => prev.map((n) => ({ ...n, lida: true })));
+      setLocalCount(0);
+      // Persiste no servidor em background
+      axios
+        .put(`${API_BASE}/notificacoes/marcar-todas-lidas`, {}, { headers: getAuthHeader() })
         .catch(() => {});
+      // NÃO chama onRefresh aqui — evita o re-render que sobrescrevia a lista
     }
   }
 
-  // Navega IMEDIATAMENTE — marca lida em background
+  // ── Clica numa notificação — navega IMEDIATAMENTE ─────────────────────
   function handleClickNotif(notif) {
     setOpen(false);
-    if (notif.tela && onNavegar) onNavegar(notif.tela); // navega primeiro
+    if (notif.tela && onNavegar) onNavegar(notif.tela); // navega primeiro, sem await
 
     if (!notif.lida) {
       setLocalNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, lida: true } : n)));
-      axios.put(`${API_BASE}/notificacoes/${notif.id}/marcar-lida`, {}, { headers: getAuthHeader() })
-        .then(() => onRefresh?.())
+      axios
+        .put(`${API_BASE}/notificacoes/${notif.id}/marcar-lida`, {}, { headers: getAuthHeader() })
         .catch(() => {});
     }
   }
 
+  // ── Remover notificação ───────────────────────────────────────────────
   function handleDelete(e, notifId) {
     e.stopPropagation();
     setLocalNotifs((prev) => prev.filter((n) => n.id !== notifId));
-    axios.delete(`${API_BASE}/notificacoes/${notifId}`, { headers: getAuthHeader() })
-      .then(() => onRefresh?.())
+    axios
+      .delete(`${API_BASE}/notificacoes/${notifId}`, { headers: getAuthHeader() })
       .catch(() => {});
   }
 
+  // ── Limpar todas ──────────────────────────────────────────────────────
   function handleClearAll() {
     setLocalNotifs([]);
     setLocalCount(0);
-    axios.put(`${API_BASE}/notificacoes/marcar-todas-lidas`, {}, { headers: getAuthHeader() })
-      .then(() => onRefresh?.())
+    axios
+      .put(`${API_BASE}/notificacoes/marcar-todas-lidas`, {}, { headers: getAuthHeader() })
       .catch(() => {});
   }
 
+  // ── Atualizar manualmente (botão ↻) ──────────────────────────────────
   async function handleManualRefresh() {
     if (refreshing) return;
     setRefreshing(true);
     try {
       const { data } = await axios.get(`${API_BASE}/notificacoes`, { headers: getAuthHeader() });
-      setLocalNotifs(data.notificacoes ?? data ?? []);
+      const lista = data.notificacoes ?? data ?? [];
+      setLocalNotifs(lista);
+      initializedRef.current = true;
       const r = await axios.get(`${API_BASE}/notificacoes/nao-lidas-count`, { headers: getAuthHeader() });
       setLocalCount(r.data.count ?? 0);
     } catch { /* silencioso */ }
@@ -269,7 +306,12 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
               🔔 Notificações
               <span
                 title={sseConnected ? "Tempo real ativo" : "Reconectando..."}
-                style={{ width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, background: sseConnected ? "#00e676" : "#ff9800", animation: "ssePulse 2s ease-in-out infinite", boxShadow: sseConnected ? "0 0 5px rgba(0,230,118,0.7)" : "0 0 5px rgba(255,152,0,0.7)" }}
+                style={{
+                  width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0,
+                  background: sseConnected ? "#00e676" : "#ff9800",
+                  animation: "ssePulse 2s ease-in-out infinite",
+                  boxShadow: sseConnected ? "0 0 5px rgba(0,230,118,0.7)" : "0 0 5px rgba(255,152,0,0.7)",
+                }}
               />
               {unreadInList > 0 && (
                 <span style={{ background: "rgba(255,59,85,0.2)", color: "#ff8095", fontSize: "10px", borderRadius: "999px", padding: "1px 7px", fontWeight: "700" }}>
