@@ -10,6 +10,8 @@ import ResetPassword from "./ResetPassword";
 import Sininho from "./Sininho";
 import MeuPerfil from "./MeuPerfil";
 import Ranking from "./Ranking";
+import Historico from "./Historico";
+
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
 const API_BASE = "http://127.0.0.1:5000/api";
@@ -1191,9 +1193,17 @@ function App() {
         >
           MEU RELÓGIO
         </button>
-        <button disabled title="Em breve">
+
+        <button
+          className={abaAtiva === "historico" ? "active" : ""}
+          onClick={() => {
+            setAbaAtiva("historico");
+            if (screen !== "app") setScreen("app");
+          }}
+        >
           HISTÓRICO
         </button>
+
         <button
           className={abaAtiva === "holerite" ? "active" : ""}
           onClick={() => {
@@ -1216,7 +1226,7 @@ function App() {
           className={abaAtiva === "ranking" ? "active" : ""}
           onClick={() => setAbaAtiva("ranking")}
         >
-           RANKING
+          RANKING
         </button>
 
         <Sininho
@@ -1517,6 +1527,8 @@ function App() {
               </button>
             </div>
           </div>
+        ) : abaAtiva === "historico" ? (
+          <Historico userName={userData.nome} />
         ) : abaAtiva === "holerite" ? (
           <Holerite userData={userData} />
         ) : abaAtiva === "equipe" ? (
