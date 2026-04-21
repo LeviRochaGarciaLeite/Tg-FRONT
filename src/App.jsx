@@ -159,6 +159,10 @@ function App() {
   const [now, setNow] = useState(Date.now());
   const [actionLoading, setActionLoading] = useState(false);
 
+  // ── Valores congelados da jornada (para não recalcular após "done") ────
+  const [frozenConnectedSec, setFrozenConnectedSec] = useState(null);
+  const [frozenWorkedSec, setFrozenWorkedSec] = useState(null);
+
   // Feedback visual
   const [toast, setToast] = useState({ msg: "", type: "info" });
   const [confirmExit, setConfirmExit] = useState(false);
@@ -303,13 +307,17 @@ function App() {
   }, [pauseLog, now]);
 
   const connectedSec =
-    startTime && (status === "working" || status === "paused")
+    frozenConnectedSec !== null && status === "done"
+      ? frozenConnectedSec
+      : startTime && (status === "working" || status === "paused")
       ? Math.floor((now - startTime) / 1000)
       : startTime && endTime
       ? Math.floor((endTime - startTime) / 1000)
       : 0;
 
-  const workedSec = Math.max(0, connectedSec - totalPauseSec);
+  const workedSec = frozenWorkedSec !== null && status === "done" 
+    ? frozenWorkedSec
+    : Math.max(0, connectedSec - totalPauseSec);
 
   // ── Integração com backend ───────────────────────────────────────────────
 
@@ -411,6 +419,14 @@ function App() {
   function handleCloseSummary() {
     setShowDailySummary(false);
     setSummarySnapshot(null);
+
+    // Reset completo para próxima jornada
+    setStatus("idle");
+    setStartTime(null);
+    setEndTime(null);
+    setPauseLog([]);
+    setFrozenConnectedSec(null);
+    setFrozenWorkedSec(null);
 
     localStorage.clear();
     setToken("");
@@ -580,6 +596,12 @@ function App() {
     setEndTime(current);
     setNow(current);
     setStatus("done");
+
+    // ── Congela os valores no momento exato do logout ─────────────────────
+    const finalConnected = Math.floor((current - startTime) / 1000);
+    const finalWorked = Math.max(0, finalConnected - totalPauseSec);
+    setFrozenConnectedSec(finalConnected);
+    setFrozenWorkedSec(finalWorked);
 
     await registrarNoBanco("saida");
 

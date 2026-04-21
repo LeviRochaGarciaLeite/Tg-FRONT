@@ -177,15 +177,13 @@ export default function Historico({ userName }) {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get(`${API_BASE}/ponto/historico`, {
+      const { data } = await axios.get(`${API_BASE}/ponto/historico-dias`, {
         headers: getAuthHeader(),
-        params: { semanas: 2 },
+        params: { dias: 14 },
       });
-      // Garante que é um array
+      // O novo endpoint retorna um array direto com resumos consolidados
       if (Array.isArray(data)) {
         setRecords(data);
-      } else if (data && Array.isArray(data.registros)) {
-        setRecords(data.registros);
       } else {
         console.warn("Formato inesperado da API:", data);
         setRecords(buildMockHistory());

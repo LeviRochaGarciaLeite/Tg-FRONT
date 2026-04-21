@@ -4,26 +4,25 @@ import { StatCard } from "./StatCard";
 import { PointsPanel } from "./PointsPanel";
 import { formatSeconds, formatTime, formatDate } from "../utils/dailySummary";
 import "./DailySummary.css";
-import ProductivityChart from "../ProductivityChart";
-
 
 /**
- * Tela de Resumo do Dia.
+ * Tela de Resumo do Dia — exibida automaticamente após encerramento da sessão.
  *
  * Props:
- * - localAppState: estado atual do App (startTime, pauseLog, connectedSec, etc.)
- *   Usado como fallback se o backend não tiver o endpoint de resumo.
- * - onClose: callback chamado ao clicar em "Voltar ao Login"
- * - userName: nome do usuário logado
+ *  - localAppState : estado real do App (startTime, pauseLog, connectedSec, etc.)
+ *  - onClose       : callback para encerrar a sessão / voltar ao login
+ *  - userName      : nome completo do usuário logado
  */
 export function DailySummaryScreen({ localAppState, onClose, userName }) {
   const { summary, loading, error } = useDailySummary(localAppState);
   const containerRef = useRef(null);
 
-  // Animação de entrada nos cards
+  // Animação de entrada escalonada nos cards
   useEffect(() => {
     if (!summary || !containerRef.current) return;
-    const cards = containerRef.current.querySelectorAll(".ds-stat-card, .ds-points-panel, .ds-hero");
+    const cards = containerRef.current.querySelectorAll(
+      ".ds-stat-card, .ds-points-panel, .ds-hero"
+    );
     cards.forEach((card, i) => {
       card.style.animationDelay = `${i * 80}ms`;
       card.classList.add("ds-fade-in");
@@ -33,6 +32,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
   const firstName = userName ? userName.split(" ")[0] : "Colaborador";
   const today = new Date().toISOString();
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="ds-wrapper ds-wrapper--loading">
@@ -42,6 +42,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
     );
   }
 
+  // ── Erro sem fallback ──────────────────────────────────────────────────────
   if (error && !summary) {
     return (
       <div className="ds-wrapper ds-wrapper--error">
@@ -56,13 +57,14 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
 
   return (
     <div className="ds-wrapper" ref={containerRef}>
-      {/* Elementos de fundo decorativos */}
+      {/* Fundo decorativo */}
       <div className="ds-bg-glow ds-bg-glow--1" aria-hidden="true" />
       <div className="ds-bg-glow ds-bg-glow--2" aria-hidden="true" />
       <div className="ds-scanlines" aria-hidden="true" />
 
       <div className="ds-container">
-        {/* Hero Section */}
+
+        {/* ── Hero ────────────────────────────────────────────────────────── */}
         <header className="ds-hero">
           <div className="ds-hero__tag">RESUMO DO DIA</div>
           <h1 className="ds-hero__title">
@@ -71,7 +73,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
           <p className="ds-hero__date">{formatDate(today)}</p>
         </header>
 
-        {/* Linha: Início e Pausas */}
+        {/* ── Horário e Pausas ─────────────────────────────────────────────── */}
         <section className="ds-section">
           <div className="ds-grid ds-grid--2">
             <StatCard
@@ -89,7 +91,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
           </div>
         </section>
 
-        {/* Linha: Tempos */}
+        {/* ── Tempos ──────────────────────────────────────────────────────── */}
         <section className="ds-section">
           <h2 className="ds-section__title">Tempos</h2>
           <div className="ds-grid ds-grid--3">
@@ -113,6 +115,7 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
             />
           </div>
 
+          {/* Alerta de atraso — só exibe se houver atraso real */}
           {summary.lateTimeInSeconds > 0 && (
             <div className="ds-late-alert">
               <span className="ds-late-alert__icon">⚠</span>
@@ -124,24 +127,29 @@ export function DailySummaryScreen({ localAppState, onClose, userName }) {
           )}
         </section>
 
-<section className="ds-section">
-  <ProductivityChart />
-</section>
-        {/* Pontuação */}
+        {/* ── Pontuação com cenário ────────────────────────────────────────── */}
         <section className="ds-section">
           <PointsPanel
             positivePoints={summary.positivePoints}
             negativePoints={summary.negativePoints}
+            cenario={summary.cenario}
+            cenarioLabel={summary.cenarioLabel}
+            cenarioColor={summary.cenarioColor}
           />
         </section>
 
-        {/* Ação */}
+        {/* ── Rodapé ──────────────────────────────────────────────────────── */}
         <footer className="ds-footer">
-          <button className="ds-btn-primary" onClick={onClose} aria-label="Voltar ao login">
+          <button
+            className="ds-btn-primary"
+            onClick={onClose}
+            aria-label="Encerrar sessão e voltar ao login"
+          >
             Encerrar Sessão
           </button>
           <p className="ds-footer__hint">Até o próximo dia de trabalho 👋</p>
         </footer>
+
       </div>
     </div>
   );
