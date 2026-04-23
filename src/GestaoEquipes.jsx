@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 
 const API_BASE = "http://127.0.0.1:5000/api";
@@ -6,6 +6,10 @@ const API_BASE = "http://127.0.0.1:5000/api";
 function getAuthHeader() {
   const token = localStorage.getItem("nexus_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function getToken() {
+  return localStorage.getItem("nexus_token") || "";
 }
 
 function fmtSec(totalSec) {
@@ -467,6 +471,8 @@ export default function GestaoEquipes({ userData }) {
   const [erro, setErro] = useState("");
   const [lastUpdate, setLastUpdate] = useState(null);
   const [tick, setTick] = useState(Date.now());
+  const streamRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
 
   const perfilLower = (userData?.perfil || "").toLowerCase();
   const isManager = ["gestor", "admin"].includes(perfilLower);
@@ -560,8 +566,60 @@ export default function GestaoEquipes({ userData }) {
   useEffect(() => {
     if (!isManager) return;
     carregarTudo();
-    const interval = setInterval(carregarTudo, 5000);
+    const interval = setInterval(carregarTudo, 15000);
     return () => clearInterval(interval);
+  }, [carregarTudo, isManager]);
+
+  useEffect(() => {
+    if (!isManager) return;
+
+    function refreshRealtime() {
+      carregarTudo();
+      setTimeout(carregarTudo, 700);
+    }
+
+    function connect() {
+      const token = getToken();
+      if (!token) return;
+
+      if (streamRef.current) {
+        streamRef.current.close();
+        streamRef.current = null;
+      }
+
+      const streamUrl = `${API_BASE}/gestor/equipes/stream?token=${encodeURIComponent(token)}`;
+      const stream = new EventSource(streamUrl);
+      streamRef.current = stream;
+
+      stream.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.tipo === "__connected__") return;
+          if (data.tipo === "ponto_atualizado") refreshRealtime();
+        } catch {
+          // Ignora eventos malformados sem derrubar o painel.
+        }
+      };
+
+      stream.onerror = () => {
+        stream.close();
+        streamRef.current = null;
+        reconnectTimerRef.current = setTimeout(connect, 5000);
+      };
+    }
+
+    connect();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.close();
+        streamRef.current = null;
+      }
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
   }, [carregarTudo, isManager]);
 
   useEffect(() => {
