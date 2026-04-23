@@ -100,6 +100,7 @@ function injectKeyframes() {
 function useSSENotifications({ isLogged, onNewNotification }) {
   const esRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const connectRef = useRef(null);
   const [sseConnected, setSseConnected] = useState(false);
 
   const connect = useCallback(() => {
@@ -128,14 +129,20 @@ function useSSENotifications({ isLogged, onNewNotification }) {
       setSseConnected(false);
       es.close();
       esRef.current = null;
-      reconnectTimerRef.current = setTimeout(() => { if (isLogged) connect(); }, 5000);
+      reconnectTimerRef.current = setTimeout(() => {
+        if (isLogged) connectRef.current?.();
+      }, 5000);
     };
   }, [isLogged, onNewNotification]);
 
   useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
+
+  useEffect(() => {
     if (!isLogged) {
       if (esRef.current) { esRef.current.close(); esRef.current = null; }
-      setSseConnected(false);
+      queueMicrotask(() => setSseConnected(false));
       return;
     }
     connect();
@@ -149,7 +156,7 @@ function useSSENotifications({ isLogged, onNewNotification }) {
 }
 
 /* ── Componente principal ──────────────────────────────────────────────── */
-export default function Sininho({ token, count = 0, notifications = [], loading = false, onRefresh, onNavegar }) {
+export default function Sininho({ token, count = 0, notifications = [], loading = false, onNavegar }) {
   const [open, setOpen] = useState(false);
   const [shaking, setShaking] = useState(false);
   const [localNotifs, setLocalNotifs] = useState(notifications);
@@ -162,6 +169,12 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
   const isLogged = !!token;
 
   injectKeyframes();
+
+  const emitirAtualizacaoPonto = useCallback((notif) => {
+    if (notif?.tipo === "ponto") {
+      window.dispatchEvent(new CustomEvent("nexus:ponto-atualizado", { detail: notif }));
+    }
+  }, []);
 
   // ── Sincronização com props externas ──────────────────────────────────
   // REGRA: o estado local é dono dos dados após a primeira inicialização.
@@ -177,9 +190,12 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
       setLocalCount(count);
     } else if (initializedRef.current && notifications.length > localNotifs.length) {
       // Servidor trouxe notificações a mais — merge sem perder as locais
+      const idsLocais = new Set(localNotifs.map((n) => n.id));
+      const novas = notifications.filter((n) => !idsLocais.has(n.id));
+      novas.forEach(emitirAtualizacaoPonto);
       setLocalNotifs((prev) => {
-        const idsLocais = new Set(prev.map((n) => n.id));
-        const novas = notifications.filter((n) => !idsLocais.has(n.id));
+        const idsAtuais = new Set(prev.map((n) => n.id));
+        const novas = notifications.filter((n) => !idsAtuais.has(n.id));
         return novas.length > 0 ? [...novas, ...prev] : prev;
       });
     }
@@ -199,6 +215,7 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
   // ── SSE: nova notificação em tempo real ───────────────────────────────
   const handleNewNotification = useCallback((notif) => {
     initializedRef.current = true;
+    emitirAtualizacaoPonto(notif);
     setLocalNotifs((prev) => {
       if (prev.some((n) => n.id === notif.id)) return prev;
       return [notif, ...prev];
@@ -206,7 +223,7 @@ export default function Sininho({ token, count = 0, notifications = [], loading 
     setLocalCount((c) => c + 1);
     setShaking(true);
     setTimeout(() => setShaking(false), 800);
-  }, []);
+  }, [emitirAtualizacaoPonto]);
 
   const { sseConnected } = useSSENotifications({ isLogged, onNewNotification: handleNewNotification });
 

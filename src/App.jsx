@@ -11,6 +11,7 @@ import Sininho from "./Sininho";
 import MeuPerfil from "./MeuPerfil";
 import Ranking from "./Ranking";
 import Historico from "./Historico";
+import GestaoEquipes from "./GestaoEquipes";
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -190,6 +191,7 @@ function App() {
   // Painel de gestão
   const [equipe, setEquipe] = useState([]);
   const [loadingEquipe, setLoadingEquipe] = useState(false);
+  const [gestaoVisao, setGestaoVisao] = useState("colaboradores");
   const [gestaoModal, setGestaoModal] = useState({ show: false, colab: null });
   const [gestaoNome, setGestaoNome] = useState("");
   const [gestaoFoto, setGestaoFoto] = useState("");
@@ -224,10 +226,14 @@ function App() {
   // ── Carregar equipe (gestor) ─────────────────────────────────────────────
 
   useEffect(() => {
-    if (abaAtiva === "gestao" && userData.perfil !== "colaborador") {
+    if (
+      abaAtiva === "gestao" &&
+      gestaoVisao === "colaboradores" &&
+      userData.perfil !== "colaborador"
+    ) {
       carregarEquipe();
     }
-  }, [abaAtiva, userData.perfil]);
+  }, [abaAtiva, gestaoVisao, userData.perfil]);
 
   async function carregarEquipe() {
     setLoadingEquipe(true);
@@ -1587,7 +1593,33 @@ function App() {
               Gerencie sua equipe e atualize informações.
             </p>
 
-            {loadingEquipe ? (
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+                flexWrap: "wrap",
+                marginBottom: "24px",
+              }}
+            >
+              <button
+                className={gestaoVisao === "colaboradores" ? "btn btn-start" : "btn btn-cancel"}
+                style={{ padding: "8px 16px", fontSize: "11px", letterSpacing: "1px" }}
+                onClick={() => setGestaoVisao("colaboradores")}
+              >
+                COLABORADORES
+              </button>
+              <button
+                className={gestaoVisao === "equipes" ? "btn btn-start" : "btn btn-cancel"}
+                style={{ padding: "8px 16px", fontSize: "11px", letterSpacing: "1px" }}
+                onClick={() => setGestaoVisao("equipes")}
+              >
+                EQUIPES AO VIVO
+              </button>
+            </div>
+
+            {gestaoVisao === "equipes" ? (
+              <GestaoEquipes userData={userData} />
+            ) : loadingEquipe ? (
               <p
                 style={{
                   color: "var(--accent-cyan)",
