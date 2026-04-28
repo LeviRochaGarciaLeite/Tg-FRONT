@@ -12,6 +12,7 @@ import MeuPerfil from "./MeuPerfil";
 import Ranking from "./Ranking";
 import Historico from "./Historico";
 import GestaoEquipes from "./GestaoEquipes";
+import Chat from "./Chat";
 
 // ─── Utilitários ─────────────────────────────────────────────────────────────
 
@@ -1427,6 +1428,7 @@ function App() {
         {showMeuPerfil && (
           <MeuPerfil userData={userData} onClose={() => setShowMeuPerfil(false)} />
         )}
+        <Chat userData={userData} />
       </div>
     );
   }
@@ -1825,6 +1827,7 @@ function App() {
       {showMeuPerfil && (
         <MeuPerfil userData={userData} onClose={() => setShowMeuPerfil(false)} />
       )}
+      <Chat userData={userData} />
     </div>
   );
 }
